@@ -36,6 +36,7 @@ It's a universal app for Apple silicon and Intel and needs macOS 14 or later. It
 - **App uninstaller:** finds apps you haven't opened in months and removes them along with their leftover support files.
 - **Space Explorer:** drill into any folder or disk to see what's using space, with sizes filling in live.
 - **Large Files:** finds the biggest files anywhere.
+- **Memory:** live memory pressure and the apps using the most RAM, with one-click Quit. There's also an optional cache purge. It comes without the usual "RAM cleaner" snake oil: Reclaim explains what actually helps.
 - **Every disk:** usage for internal, external and network disks, cleanup of each disk's own Trash, and an Eject button.
 - **Menu bar:** disk usage at a glance, one-click cleanup, and a notification when space runs low.
 - **Command-line tool:** everything is also scriptable from Terminal.
@@ -78,6 +79,7 @@ reclaim apps --days 180              # apps unused for 6 months
 reclaim uninstall "Some App"         # app + support files to the Trash
 reclaim explore ~/Library            # what's using space here
 reclaim large / --min 2GB            # big files anywhere
+reclaim memory                       # memory pressure + heaviest apps
 ```
 
 Run `reclaim help` for every option, and `reclaim list` for the category and tool IDs.

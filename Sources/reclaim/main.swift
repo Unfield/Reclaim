@@ -23,6 +23,9 @@ let usage = """
   reclaim uninstall <app>            Move an app and its support files to the Trash
       --keep-data                    Only remove the app, not its support files
       -n, --dry-run / -y, --yes
+  reclaim memory                     Show memory usage, pressure and the heaviest apps
+      --limit <n>                    Number of apps to list (default: 10)
+      --purge                        Clear file caches with `purge` (needs sudo or --admin)
   reclaim explore [path]             Show what's using space in a folder (default: home)
       --limit <n>                    Maximum number of results (default: 25)
   reclaim large [path]               Find the largest files (default: home folder; may be a disk, e.g. /Volumes/X)
@@ -424,6 +427,47 @@ func runUninstall(_ args: Arguments) async throws {
     print(Style.green("\n✓ Moved \(ByteSize.format(report.bytesFreed)) to the Trash"))
 }
 
+// MARK: - memory
+
+func runMemory(_ args: Arguments) async throws {
+    guard let stats = MemoryMonitor.stats() else { throw UsageError("couldn't read memory statistics") }
+
+    let pressure: String
+    switch stats.pressure {
+    case .normal: pressure = Style.green(stats.pressure.label)
+    case .warning: pressure = Style.yellow(stats.pressure.label)
+    case .critical: pressure = Style.red(stats.pressure.label)
+    }
+    print(Style.bold("Memory") + Style.dim("  \(ByteSize.formatMemory(stats.total)) installed"))
+    print("  \(progressBar(fraction: stats.usedFraction))  \(ByteSize.formatMemory(stats.used)) used")
+    print("  Pressure      \(pressure)  \(Style.dim(stats.pressure.explanation))")
+    print("  App memory    \(pad(ByteSize.formatMemory(stats.appMemory), 10, alignRight: true))")
+    print("  Wired         \(pad(ByteSize.formatMemory(stats.wired), 10, alignRight: true))")
+    print("  Compressed    \(pad(ByteSize.formatMemory(stats.compressed), 10, alignRight: true))")
+    print("  Cached files  \(pad(ByteSize.formatMemory(stats.cachedFiles), 10, alignRight: true))  \(Style.dim("(given back automatically when apps need it)"))")
+    print("  Swap used     \(pad(ByteSize.formatMemory(stats.swapUsed), 10, alignRight: true))")
+
+    let limit = try parseLimit(args, default: 10)
+    let groups = MemoryMonitor.processGroups().prefix(limit)
+    if !groups.isEmpty {
+        print(Style.bold("\nHeaviest apps"))
+        for group in groups {
+            let count = group.processCount > 1 ? Style.dim(" (\(group.processCount) processes)") : ""
+            print("  \(pad(ByteSize.formatMemory(group.memory), 10, alignRight: true))  \(group.name)\(count)")
+        }
+    }
+
+    if args.has("purge") {
+        status("Clearing file caches…")
+        let freed = try await MemoryMonitor.purge(allowAdministrator: args.has("admin"))
+        clearStatus()
+        print(Style.green("\n✓ Cleared caches. \(ByteSize.formatMemory(freed)) more memory is available right now."))
+        print(Style.dim("macOS refills these caches as you work; that's normal and makes your Mac faster."))
+    } else if stats.pressure > .normal {
+        print(Style.yellow("\nQuitting apps you aren't using is the most effective way to free memory."))
+    }
+}
+
 // MARK: - explore / large
 
 func expandPath(_ argument: String?) -> URL {
@@ -493,6 +537,7 @@ do {
     case "apps": try await runApps(args)
     case "uninstall": try await runUninstall(args)
     case "explore": try await runExplore(args)
+    case "memory", "ram": try await runMemory(args)
     case "large": try runLarge(args)
     case "help", "-h", "--help": print(usage)
     case "version", "--version", "-v": print("reclaim \(ReclaimInfo.version)")

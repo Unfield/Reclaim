@@ -4,6 +4,17 @@ All notable changes to Reclaim are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-07
+
+### Added
+- Memory screen: memory pressure, an Activity Monitor-style breakdown (app, wired, compressed, cached), swap, and the apps using the most memory, with Quit and Force Quit. A helper process is counted under the app it belongs to.
+- "Clear Memory Caches" (`purge`), with an honest explanation of when it helps.
+- Memory usage and pressure in the menu bar.
+- `reclaim memory` command (`--purge --admin` to clear caches).
+
+### Fixed
+- Scanning no longer stalls while a macOS privacy prompt (e.g. for Downloads) is waiting for an answer.
+
 ## [0.3.0] - 2026-11-07
 
 First public release.

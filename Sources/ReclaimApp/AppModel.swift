@@ -9,6 +9,7 @@ enum SidebarItem: Hashable {
     case apps
     case explorer
     case largeFiles
+    case memory
 }
 
 struct ToolState {
@@ -77,6 +78,12 @@ final class AppModel {
     var explorerError: String?
     @ObservationIgnored private var explorerTask: Task<Void, Never>?
     @ObservationIgnored private var explorerCache: [URL: [FolderEntry]] = [:]
+
+    // MARK: Memory
+    var memory: MemoryStats?
+    var memoryGroups: [ProcessGroup] = []
+    var isPurging = false
+    var purgeMessage: String?
 
     // MARK: Large files
     var largeFilesRoot = FileManager.default.homeDirectoryForCurrentUser
@@ -533,6 +540,79 @@ final class AppModel {
 
     func chooseExplorerFolder() {
         if let url = Self.chooseFolder(startingAt: explorerFolder) { explore(url) }
+    }
+
+    // MARK: - Memory
+
+    /// Cheap; safe to call every couple of seconds.
+    func refreshMemoryStats() {
+        memory = MemoryMonitor.stats()
+    }
+
+    func refreshMemory() async {
+        let (stats, groups) = await Task.detached(priority: .utility) {
+            (MemoryMonitor.stats(), MemoryMonitor.processGroups())
+        }.value
+        memory = stats
+        memoryGroups = merge(groups)
+    }
+
+    /// Keeps the previous row order unless it's clearly wrong, so the list doesn't reshuffle on every refresh.
+    private func merge(_ fresh: [ProcessGroup]) -> [ProcessGroup] {
+        guard !memoryGroups.isEmpty else { return fresh }
+        let byID = Dictionary(uniqueKeysWithValues: fresh.map { ($0.id, $0) })
+        var merged = memoryGroups.compactMap { byID[$0.id] }
+        let known = Set(merged.map(\.id))
+        merged += fresh.filter { !known.contains($0.id) }
+
+        let outOfOrder = zip(merged, merged.dropFirst()).contains { above, below in
+            below.memory - above.memory > 50_000_000 && Double(below.memory) > Double(above.memory) * 1.25
+        }
+        if outOfOrder { merged.sort { $0.memory > $1.memory } }
+        return merged
+    }
+
+    func runningApp(for group: ProcessGroup) -> NSRunningApplication? {
+        guard let bundle = group.bundleURL?.standardizedFileURL else { return nil }
+        return NSWorkspace.shared.runningApplications.first {
+            $0.bundleURL?.standardizedFileURL == bundle && !$0.isTerminated
+        }
+    }
+
+    /// Regular apps can always be quit (like ⌘Q); other processes only if they aren't part of macOS.
+    func canQuit(_ group: ProcessGroup) -> Bool {
+        if group.pids.contains(getpid()) { return false }
+        if let app = runningApp(for: group) { return app.activationPolicy == .regular || !group.isSystem }
+        return !group.isSystem
+    }
+
+    func quit(_ group: ProcessGroup, force: Bool) {
+        if let app = runningApp(for: group) {
+            _ = force ? app.forceTerminate() : app.terminate()
+        } else {
+            do {
+                try MemoryMonitor.terminate(group)
+            } catch {
+                NSAlert(error: error).runModal()
+            }
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            await refreshMemory()
+        }
+    }
+
+    func purgeMemory() async {
+        guard !isPurging else { return }
+        isPurging = true
+        defer { isPurging = false }
+        do {
+            let freed = try await MemoryMonitor.purge(allowAdministrator: true)
+            purgeMessage = "Cleared memory caches. \(ByteSize.formatMemory(freed)) more is available right now."
+        } catch {
+            purgeMessage = error.localizedDescription
+        }
+        await refreshMemory()
     }
 
     // MARK: - Large files

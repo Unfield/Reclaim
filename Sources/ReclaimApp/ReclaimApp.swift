@@ -45,6 +45,7 @@ struct ReclaimApp: App {
                 Button("Applications") { model.selection = .apps }.keyboardShortcut("2")
                 Button("Space Explorer") { model.selection = .explorer }.keyboardShortcut("3")
                 Button("Large Files") { model.selection = .largeFiles }.keyboardShortcut("4")
+                Button("Memory") { model.selection = .memory }.keyboardShortcut("5")
             }
             CommandGroup(replacing: .help) {
                 Link("Reclaim on GitHub", destination: ReclaimInfo.repositoryURL)

@@ -6,6 +6,11 @@ public enum ByteSize {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
+    /// Formats RAM sizes the way Activity Monitor does (binary units, so 16 GiB shows as "16 GB").
+    public static func formatMemory(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
+    }
+
     /// Parses human-friendly sizes such as `500MB`, `1.5g`, `200k` or plain byte counts.
     /// Uses decimal units to match Finder and `format(_:)`, unless `binary` is set
     /// (Homebrew, for example, reports `MB` but means MiB).

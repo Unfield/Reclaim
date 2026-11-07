@@ -16,6 +16,40 @@ struct MenuBarLabel: View {
     }
 }
 
+private struct MemoryRow: View {
+    let stats: MemoryStats
+    let open: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            IconTile(systemName: "memorychip", tint: stats.pressure.color, size: 24)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Memory").fontWeight(.medium)
+                    Text(stats.pressure.label)
+                        .font(.caption)
+                        .foregroundStyle(stats.pressure.color)
+                    Spacer(minLength: 8)
+                    Text("\(ByteSize.formatMemory(stats.used)) of \(ByteSize.formatMemory(stats.total))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(.quaternary)
+                        Capsule().fill(stats.pressure.color).frame(width: geometry.size.width * stats.usedFraction)
+                    }
+                }
+                .frame(height: 5)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: open)
+        .help("Show memory details")
+    }
+}
+
 struct MenuBarView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -31,6 +65,13 @@ struct MenuBarView: View {
                     Label("Your startup disk is running low on space.", systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                         .font(.callout)
+                }
+                if let memory = model.memory {
+                    MemoryRow(stats: memory) {
+                        model.selection = .memory
+                        openWindow(id: "main")
+                        NSApp.activate()
+                    }
                 }
             }
 
@@ -73,6 +114,12 @@ struct MenuBarView: View {
         .padding(16)
         .frame(width: 320)
         .onAppear { model.updateVolume() }
+        .task {
+            while !Task.isCancelled {
+                model.refreshMemoryStats()
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
     }
 
     @ViewBuilder

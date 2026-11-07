@@ -56,6 +56,8 @@ struct ContentView: View {
             ExplorerView()
         case .largeFiles:
             LargeFilesView()
+        case .memory:
+            MemoryView()
         case .overview, nil:
             OverviewView()
         }
@@ -89,6 +91,8 @@ private struct Sidebar: View {
             Label("Overview", systemImage: "gauge.with.dots.needle.33percent")
                 .badge(badge(model.totalReclaimable))
                 .tag(SidebarItem.overview)
+            Label("Memory", systemImage: "memorychip")
+                .tag(SidebarItem.memory)
 
             ForEach(CategoryGroup.allCases, id: \.self) { group in
                 let scans = model.scans.filter { $0.category.group == group }
