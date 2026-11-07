@@ -22,7 +22,7 @@ All notable changes to Reclaim are listed here. The format follows [Keep a Chang
 - New categories: old editor extensions (VS Code, Cursor, Windsurf), old JetBrains IDE data, Android emulator images, Unity cache, leftover installers. New tool: Xcode Simulators.
 - Drag an app onto the Applications screen or Reclaim's Dock icon to uninstall it.
 - In-app updates (Sparkle), Homebrew cask (`brew install --cask unfield/tap/reclaim`), and the `reclaim` command bundled inside the app.
-- German translation.
+- German translation, with a Language setting (System Default, English, Deutsch) in Settings → General.
 - Collapsible sidebar sections.
 
 ### Changed

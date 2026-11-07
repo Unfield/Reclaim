@@ -51,6 +51,7 @@ private struct GeneralSettings: View {
                     Text(loginError).font(.caption).foregroundStyle(.red)
                 }
             }
+            LanguageSection()
             Section("Thresholds") {
                 Picker("Old downloads are older than", selection: $oldDownloadsDays) {
                     Text("30 days").tag(30)
@@ -123,6 +124,72 @@ private struct MenuBarSettings: View {
         }
         .formStyle(.grouped)
         .onChange(of: thresholdGB) { model.updateVolume() }
+    }
+}
+
+/// Lets Reclaim use a different language than the rest of the Mac.
+///
+/// macOS picks an app's language at launch from its `AppleLanguages` preference (the same mechanism as
+/// System Settings → Language & Region → Applications), so a change applies after a restart.
+private struct LanguageSection: View {
+    /// nil = follow the system.
+    @State private var selection: String? = AppLanguage.current
+    private let launchLanguage = AppLanguage.current
+
+    var body: some View {
+        Section {
+            Picker("Language", selection: $selection) {
+                Text("System Default").tag(String?.none)
+                Divider()
+                ForEach(AppLanguage.available, id: \.code) { language in
+                    Text(verbatim: language.name).tag(String?.some(language.code))
+                }
+            }
+            .onChange(of: selection) { _, code in AppLanguage.set(code) }
+
+            if selection != launchLanguage {
+                HStack {
+                    Text("Restart Reclaim to switch the language.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Restart Now") { AppLanguage.relaunch() }
+                }
+            }
+        }
+    }
+}
+
+enum AppLanguage {
+    /// Languages Reclaim ships translations for, named in their own language.
+    static let available: [(code: String, name: String)] = [("en", "English"), ("de", "Deutsch")]
+
+    private static let key = "AppleLanguages"
+
+    /// The language chosen for Reclaim only (not the system-wide list), if any.
+    static var current: String? {
+        guard let domain = Bundle.main.bundleIdentifier,
+              let languages = UserDefaults.standard.persistentDomain(forName: domain)?[key] as? [String]
+        else { return nil }
+        return languages.first.flatMap { code in available.first { code.hasPrefix($0.code) }?.code }
+    }
+
+    static func set(_ code: String?) {
+        if let code {
+            UserDefaults.standard.set([code], forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
+    /// Starts a new copy of the app once this one has quit.
+    @MainActor
+    static func relaunch() {
+        let process = Process()
+        process.executableURL = URL(filePath: "/bin/sh")
+        process.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; open \"$0\"", Bundle.main.bundlePath, "\(getpid())"]
+        try? process.run()
+        NSApp.terminate(nil)
     }
 }
 

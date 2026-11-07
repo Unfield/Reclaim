@@ -779,3 +779,9 @@
 "~1 year" = "~1 Jahr";
 "…and %lld more" = "… und %lld weitere";
 "…and %lld more." = "… und %lld weitere.";
+
+/* Settings → General → Language */
+"Language" = "Sprache";
+"System Default" = "Systemstandard";
+"Restart Reclaim to switch the language." = "Starte Reclaim neu, um die Sprache zu wechseln.";
+"Restart Now" = "Jetzt neu starten";
