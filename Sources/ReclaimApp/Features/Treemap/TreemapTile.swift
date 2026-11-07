@@ -31,7 +31,7 @@ struct TreemapTile: Identifiable, Equatable {
     var title: String {
         switch kind {
         case .entry(let entry): entry.name
-        case .other(let ids): "Other (\(ids.count) items)"
+        case .other(let ids): String(localized: "Other (\(ids.count) items)")
         }
     }
 
@@ -39,7 +39,7 @@ struct TreemapTile: Identifiable, Equatable {
     var compactTitle: String {
         switch kind {
         case .entry(let entry): entry.name
-        case .other: "Other"
+        case .other: String(localized: "Other")
         }
     }
 
@@ -54,14 +54,14 @@ struct TreemapTile: Identifiable, Equatable {
     var tooltip: String {
         switch kind {
         case .entry(let entry): "\(entry.url.abbreviatedPath)\n\(ByteSize.format(size))"
-        case .other(let ids): "\(ids.count) smaller items\n\(ByteSize.format(size))"
+        case .other(let ids): String(localized: "\(ids.count) smaller items") + "\n" + ByteSize.format(size)
         }
     }
 
     var accessibilityLabel: String {
         switch kind {
-        case .entry(let entry): "\(entry.name), \(entry.isFolder ? "folder" : "file"), \(ByteSize.format(size))"
-        case .other(let ids): "\(ids.count) smaller items, \(ByteSize.format(size))"
+        case .entry(let entry): "\(entry.name), \(entry.isFolder ? String(localized: "folder") : String(localized: "file")), \(ByteSize.format(size))"
+        case .other(let ids): String(localized: "\(ids.count) smaller items") + ", " + ByteSize.format(size)
         }
     }
 

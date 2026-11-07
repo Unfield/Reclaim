@@ -109,19 +109,19 @@ public enum ThermalLevel: Int, Sendable, Comparable, CaseIterable {
 
     public var label: String {
         switch self {
-        case .nominal: "Normal"
-        case .fair: "Warm"
-        case .serious: "Hot"
-        case .critical: "Very Hot"
+        case .nominal: String(localized: "Normal")
+        case .fair: String(localized: "Warm")
+        case .serious: String(localized: "Hot")
+        case .critical: String(localized: "Very Hot")
         }
     }
 
     public var explanation: String {
         switch self {
-        case .nominal: "Your Mac is running cool. Nothing to do."
-        case .fair: "Your Mac is a little warm. That's normal while it's working hard."
-        case .serious: "Your Mac is hot and may slow itself down to cool off. Quitting busy apps will help."
-        case .critical: "Your Mac is slowing down a lot to cool off. Quit busy apps and make sure its vents aren't blocked."
+        case .nominal: String(localized: "Your Mac is running cool. Nothing to do.")
+        case .fair: String(localized: "Your Mac is a little warm. That's normal while it's working hard.")
+        case .serious: String(localized: "Your Mac is hot and may slow itself down to cool off. Quitting busy apps will help.")
+        case .critical: String(localized: "Your Mac is slowing down a lot to cool off. Quit busy apps and make sure its vents aren't blocked.")
         }
     }
 }
@@ -140,9 +140,9 @@ public struct CPUInfo: Sendable, Equatable {
 
     /// "10 cores (4 performance, 6 efficiency)" or "8 cores".
     public var summary: String {
-        let cores = "\(coreCount) \(coreCount == 1 ? "core" : "cores")"
+        let cores = coreCount == 1 ? String(localized: "1 core") : String(localized: "\(coreCount) cores")
         if let performanceCores, let efficiencyCores, performanceCores > 0, efficiencyCores > 0 {
-            return "\(cores) (\(performanceCores) performance, \(efficiencyCores) efficiency)"
+            return String(localized: "\(cores) (\(performanceCores) performance, \(efficiencyCores) efficiency)")
         }
         return cores
     }

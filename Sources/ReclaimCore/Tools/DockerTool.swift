@@ -4,27 +4,27 @@ import Foundation
 public struct DockerTool: MaintenanceTool {
     public let id = "docker"
     public let name = "Docker"
-    public let summary = "Stopped containers, unused images, build cache and volumes."
+    public let summary = String(localized: "Stopped containers, unused images, build cache and volumes.")
     public let safety = SafetyLevel.review
     public let options = [
         ToolOption(
             id: "build-cache",
-            title: "Build cache",
-            detail: "Layers cached by `docker build`. Rebuilt on the next build.",
+            title: String(localized: "Build cache"),
+            detail: String(localized: "Layers cached by `docker build`. Rebuilt on the next build."),
             isEnabledByDefault: true,
             safety: .safe
         ),
         ToolOption(
             id: "all-images",
-            title: "All unused images",
-            detail: "Images not used by any container, not just dangling ones. They'll be pulled again when needed.",
+            title: String(localized: "All unused images"),
+            detail: String(localized: "Images not used by any container, not just dangling ones. They'll be pulled again when needed."),
             isEnabledByDefault: false,
             safety: .review
         ),
         ToolOption(
             id: "volumes",
-            title: "Unused volumes",
-            detail: "Volumes not attached to any container. These can contain databases and other data.",
+            title: String(localized: "Unused volumes"),
+            detail: String(localized: "Volumes not attached to any container. These can contain databases and other data."),
             isEnabledByDefault: false,
             safety: .caution
         ),
@@ -38,14 +38,14 @@ public struct DockerTool: MaintenanceTool {
             let result = try await Shell.run("docker", ["system", "df", "--format", "{{json .}}"], timeout: 60)
             guard result.succeeded else {
                 let message = result.errorOutput.contains("Cannot connect")
-                    ? "Docker isn't running. Start it to measure and clean."
+                    ? String(localized: "Docker isn't running. Start it to measure and clean.")
                     : result.failureMessage
                 return ToolStatus(availability: .unavailable(message))
             }
             return ToolStatus(
                 availability: .ready,
                 entries: Self.parseSystemDF(result.output),
-                note: "Docker Desktop's disk image shrinks gradually after pruning."
+                note: String(localized: "Docker Desktop's disk image shrinks gradually after pruning.")
             )
         } catch {
             return ToolStatus(availability: .unavailable(error.localizedDescription))
@@ -101,13 +101,13 @@ public struct DockerTool: MaintenanceTool {
 
             switch row.type {
             case "Images":
-                return ToolEntry(title: "Unused images", detail: "\(max(0, unused)) of \(row.totalCount)", size: size, optionID: "all-images")
+                return ToolEntry(title: String(localized: "Unused images"), detail: String(localized: "\(max(0, unused)) of \(row.totalCount)"), size: size, optionID: "all-images")
             case "Containers":
-                return ToolEntry(title: "Stopped containers", detail: "\(max(0, unused)) of \(row.totalCount)", size: size)
+                return ToolEntry(title: String(localized: "Stopped containers"), detail: String(localized: "\(max(0, unused)) of \(row.totalCount)"), size: size)
             case "Local Volumes":
-                return ToolEntry(title: "Unused volumes", detail: "\(max(0, unused)) of \(row.totalCount)", size: size, optionID: "volumes")
+                return ToolEntry(title: String(localized: "Unused volumes"), detail: String(localized: "\(max(0, unused)) of \(row.totalCount)"), size: size, optionID: "volumes")
             case "Build Cache":
-                return ToolEntry(title: "Build cache", detail: "\(row.totalCount) entries", size: size, optionID: "build-cache")
+                return ToolEntry(title: String(localized: "Build cache"), detail: String(localized: "\(row.totalCount) entries"), size: size, optionID: "build-cache")
             default:
                 return ToolEntry(title: row.type, size: size)
             }

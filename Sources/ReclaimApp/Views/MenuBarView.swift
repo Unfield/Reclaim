@@ -186,10 +186,10 @@ struct MenuBarView: View {
     }
 
     private var primaryTitle: String {
-        if model.isCleaning { return "Cleaning…" }
-        if model.isScanning && model.lastScanDate == nil { return "Scanning…" }
-        if model.lastScanDate == nil { return "Scan for Reclaimable Space" }
-        return "Clean Safe Items (\(ByteSize.format(model.safeReclaimable)))"
+        if model.isCleaning { return String(localized: "Cleaning…") }
+        if model.isScanning && model.lastScanDate == nil { return String(localized: "Scanning…") }
+        if model.lastScanDate == nil { return String(localized: "Scan for Reclaimable Space") }
+        return String(localized: "Clean Safe Items (\(ByteSize.format(model.safeReclaimable)))")
     }
 
     private struct TopItem {

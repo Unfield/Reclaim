@@ -23,8 +23,8 @@ private enum CPUSegment: CaseIterable {
 
     var title: String {
         switch self {
-        case .user: "User"
-        case .system: "System"
+        case .user: String(localized: "User")
+        case .system: String(localized: "System")
         }
     }
 
@@ -37,8 +37,8 @@ private enum CPUSegment: CaseIterable {
 
     var help: String {
         switch self {
-        case .user: "Time spent running apps and their helpers."
-        case .system: "Time spent in macOS itself, for example handling files, graphics and networking."
+        case .user: String(localized: "Time spent running apps and their helpers.")
+        case .system: String(localized: "Time spent in macOS itself, for example handling files, graphics and networking.")
         }
     }
 
@@ -71,7 +71,10 @@ struct ActivityView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionHeader(title: "Using the Most CPU", trailing: groups.isEmpty ? nil : "100% = one full core")
+                    SectionHeader(
+                        title: String(localized: "Using the Most CPU"),
+                        trailing: groups.isEmpty ? nil : String(localized: "100% = one full core")
+                    )
                     Card(padding: 0) {
                         if groups.isEmpty {
                             ProgressView().frame(maxWidth: .infinity, minHeight: 80)
@@ -128,14 +131,14 @@ struct ActivityView: View {
             }
         } message: { pending in
             Text(pending.force
-                ? "Unsaved changes in \(pending.group.name) will be lost."
-                : "\(pending.group.name) is using \(percentText(pending.group.cpu)) CPU right now. It may ask you to save changes.")
+                ? String(localized: "Unsaved changes in \(pending.group.name) will be lost.")
+                : String(localized: "\(pending.group.name) is using \(percentText(pending.group.cpu)) CPU right now. It may ask you to save changes."))
         }
     }
 
     private var quitTitle: String {
         guard let pending = pendingQuit else { return "" }
-        return "\(pending.force ? "Force quit" : "Quit") \(pending.group.name)?"
+        return pending.force ? String(localized: "Force quit \(pending.group.name)?") : String(localized: "Quit \(pending.group.name)?")
     }
 
     private func openActivityMonitor() {
@@ -229,7 +232,7 @@ private struct CPUSummary: View {
         }
     }
 
-    private func coreRow(_ title: String, _ value: String) -> some View {
+    private func coreRow(_ title: LocalizedStringKey, _ value: String) -> some View {
         HStack {
             Text(title)
             Spacer()
@@ -348,7 +351,7 @@ private struct CPUProcessRow: View {
                 .controlSize(.small)
                 .opacity(canQuit ? 1 : 0)
                 .disabled(!canQuit)
-                .frame(width: 56)
+                .frame(width: 68) // Room for longer translations, e.g. "Beenden"
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -366,9 +369,9 @@ private struct CPUProcessRow: View {
 
     private var subtitle: String {
         var parts = [String]()
-        if group.processCount > 1 { parts.append("\(group.processCount) processes") }
-        if group.isSystem { parts.append("Part of macOS") }
-        return parts.isEmpty ? (group.bundleURL == nil ? group.id : "App") : parts.joined(separator: " · ")
+        if group.processCount > 1 { parts.append(String(localized: "\(group.processCount) processes")) }
+        if group.isSystem { parts.append(String(localized: "Part of macOS")) }
+        return parts.isEmpty ? (group.bundleURL == nil ? group.id : String(localized: "App")) : parts.joined(separator: " · ")
     }
 }
 

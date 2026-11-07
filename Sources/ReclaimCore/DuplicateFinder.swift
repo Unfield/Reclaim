@@ -12,9 +12,9 @@ public enum DuplicateKeepRule: String, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .oldest: "Oldest"
-        case .newest: "Newest"
-        case .shortestPath: "Shortest Path"
+        case .oldest: String(localized: "Oldest")
+        case .newest: String(localized: "Newest")
+        case .shortestPath: String(localized: "Shortest Path")
         }
     }
 
@@ -548,13 +548,13 @@ public enum DuplicateSkipReason: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .wouldRemoveAllCopies: "Every copy was selected, so all were kept."
-        case .keptCopyMissing: "The copy you're keeping is gone or has changed."
-        case .missing: "It's no longer there."
-        case .changed: "It changed since the scan."
-        case .notRegularFile: "It's no longer a regular file."
-        case .excluded: "It's on your exclusion list."
-        case .protectedLocation: "It's in a protected location."
+        case .wouldRemoveAllCopies: String(localized: "Every copy was selected, so all were kept.")
+        case .keptCopyMissing: String(localized: "The copy you're keeping is gone or has changed.")
+        case .missing: String(localized: "It's no longer there.")
+        case .changed: String(localized: "It changed since the scan.")
+        case .notRegularFile: String(localized: "It's no longer a regular file.")
+        case .excluded: String(localized: "It's on your exclusion list.")
+        case .protectedLocation: String(localized: "It's in a protected location.")
         case .failed(let message): message
         }
     }

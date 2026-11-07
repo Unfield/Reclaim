@@ -26,7 +26,7 @@ struct OverviewView: View {
                         let scans = model.scans.filter { $0.category.group == group }
                         if !scans.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
-                                SectionHeader(title: group.rawValue, trailing: ByteSize.format(scans.reduce(0) { $0 + $1.totalSize }))
+                                SectionHeader(title: group.title, trailing: ByteSize.format(scans.reduce(0) { $0 + $1.totalSize }))
                                 Card(padding: 0) {
                                     ForEach(scans) { scan in
                                         CategoryRow(scan: scan)
@@ -40,7 +40,7 @@ struct OverviewView: View {
 
                 if !model.visibleTools.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        SectionHeader(title: "Maintenance")
+                        SectionHeader(title: String(localized: "Maintenance"))
                         Card(padding: 0) {
                             ForEach(model.visibleTools, id: \.id) { tool in
                                 ToolRow(tool: tool)
@@ -79,12 +79,12 @@ struct OverviewView: View {
     private var confirmationMessage: String {
         var lines = model.scans
             .filter { !model.selectedItems(in: $0).isEmpty }
-            .map { "\($0.category.name): \(ByteSize.format(model.selectedSize(in: $0)))" }
+            .map { String(localized: "\($0.category.name): \(ByteSize.format(model.selectedSize(in: $0)))") }
         lines += model.tools
             .filter { model.selectedTools.contains($0.id) }
-            .map { "\($0.name): \(model.toolReclaimable($0.id).map(ByteSize.format) ?? "all items")" }
+            .map { String(localized: "\($0.name): \(model.toolReclaimable($0.id).map(ByteSize.format) ?? String(localized: "all items"))") }
         if model.cleanupMethod == .moveToTrash {
-            lines.append("\nFiles are moved to the Trash. Tool cleanups (Homebrew, Docker, snapshots) are permanent.")
+            lines.append("\n" + String(localized: "Files are moved to the Trash. Tool cleanups (Homebrew, Docker, snapshots) are permanent."))
         }
         return lines.joined(separator: "\n")
     }
@@ -98,8 +98,10 @@ private struct DisksSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(
-                title: model.volumes.count > 1 ? "Disks" : "Disk",
-                trailing: model.volumes.count > 1 ? "\(ByteSize.format(model.volumes.reduce(0) { $0 + $1.availableForImportantUsage })) free in total" : nil
+                title: model.volumes.count > 1 ? String(localized: "Disks") : String(localized: "Disk"),
+                trailing: model.volumes.count > 1
+                    ? String(localized: "\(ByteSize.format(model.volumes.reduce(0) { $0 + $1.availableForImportantUsage })) free in total")
+                    : nil
             )
             Card(padding: 0) {
                 if model.volumes.isEmpty {
@@ -143,7 +145,7 @@ private struct ReclaimableSummary: View {
         all = all.filter { $0.size > 0 }.sorted { $0.size > $1.size }
         guard all.count > 6 else { return all }
         let other = all.dropFirst(5).reduce(Int64(0)) { $0 + $1.size }
-        return Array(all.prefix(5)) + [ChartSlice(id: "other", name: "Other", size: other)]
+        return Array(all.prefix(5)) + [ChartSlice(id: "other", name: String(localized: "Other"), size: other)]
     }
 
     private var isWorking: Bool {
@@ -166,7 +168,9 @@ private struct ReclaimableSummary: View {
                         .opacity(model.safeReclaimable > 0 || model.lastScanDate != nil ? 1 : 0)
                     HStack(spacing: 6) {
                         ActivityIndicator(isActive: isWorking)
-                        Text(isWorking ? "Scanning…" : model.lastScanDate.map { "Last scan \($0.formatted(date: .omitted, time: .shortened))" } ?? "")
+                        Text(isWorking
+                            ? String(localized: "Scanning…")
+                            : model.lastScanDate.map { String(localized: "Last scan \($0.formatted(date: .omitted, time: .shortened))") } ?? "")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -226,8 +230,8 @@ private struct CategoryRow: View {
             subtitle: scan.category.summary,
             subtitleIsWarning: false,
             isBusy: false,
-            value: scan.items.isEmpty ? "Empty" : ByteSize.format(scan.totalSize),
-            secondaryValue: partiallySelected ? "\(ByteSize.format(model.selectedSize(in: scan))) selected" : nil
+            value: scan.items.isEmpty ? OverviewRow.empty : ByteSize.format(scan.totalSize),
+            secondaryValue: partiallySelected ? String(localized: "\(ByteSize.format(model.selectedSize(in: scan))) selected") : nil
         ) {
             model.selection = .category(scan.id)
         }
@@ -250,9 +254,9 @@ private struct ToolRow: View {
 
         let value: String
         if let size = model.toolReclaimable(tool.id) {
-            value = size > 0 ? ByteSize.format(size) : "Empty"
+            value = size > 0 ? ByteSize.format(size) : OverviewRow.empty
         } else if let status = state.status, status.isReady {
-            value = status.entries.isEmpty ? "Empty" : "\(status.entries.count) items"
+            value = status.entries.isEmpty ? OverviewRow.empty : String(localized: "\(status.entries.count) items")
         } else {
             value = "—"
         }
@@ -278,6 +282,8 @@ private struct ToolRow: View {
 
 /// Shared layout for category and tool rows, with fixed column widths so values don't jump.
 private struct OverviewRow: View {
+    static let empty = String(localized: "Empty")
+
     @Binding var isOn: Bool
     let isMixed: Bool
     let isEnabled: Bool
@@ -321,7 +327,7 @@ private struct OverviewRow: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(value)
                         .monospacedDigit()
-                        .foregroundStyle(value == "Empty" || value == "—" ? .secondary : .primary)
+                        .foregroundStyle(value == Self.empty || value == "—" ? .secondary : .primary)
                     if let secondaryValue {
                         Text(secondaryValue).font(.caption).foregroundStyle(.secondary)
                     }
@@ -350,7 +356,7 @@ private struct OverviewRow: View {
 private struct PlaceholderSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "System & Apps")
+            SectionHeader(title: CategoryGroup.system.title)
             Card(padding: 0) {
                 ForEach(0..<4, id: \.self) { index in
                     HStack(spacing: 12) {

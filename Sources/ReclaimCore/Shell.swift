@@ -13,7 +13,7 @@ public struct ShellResult: Sendable {
         let lines = text.split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        return lines.first { $0.lowercased().hasPrefix("error") } ?? lines.first ?? "exit code \(status)"
+        return lines.first { $0.lowercased().hasPrefix("error") } ?? lines.first ?? String(localized: "exit code \(status)")
     }
 }
 
@@ -24,9 +24,9 @@ public enum ShellError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .commandNotFound(let name): "Couldn't find the `\(name)` command."
-        case .timedOut(let command): "`\(command)` took too long and was stopped."
-        case .failed(let command, let message): "`\(command)` failed: \(message)"
+        case .commandNotFound(let name): String(localized: "Couldn't find the `\(name)` command.")
+        case .timedOut(let command): String(localized: "`\(command)` took too long and was stopped.")
+        case .failed(let command, let message): String(localized: "`\(command)` failed: \(message)")
         }
     }
 }

@@ -84,8 +84,8 @@ struct LargeFilesView: View {
         .bottomBar {
             ActivityIndicator(isActive: model.isSearchingLargeFiles)
             Text(model.largeFiles.isEmpty
-                ? "Skips hidden files, app bundles, node_modules and .git"
-                : "\(model.largeFiles.count) files · \(ByteSize.format(model.largeFiles.reduce(0) { $0 + $1.size }))")
+                ? String(localized: "Skips hidden files, app bundles, node_modules and .git")
+                : String(localized: "\(model.largeFiles.count) files · \(ByteSize.format(model.largeFiles.reduce(0) { $0 + $1.size }))"))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             Spacer()
@@ -104,7 +104,7 @@ struct LargeFilesView: View {
         ) { item in
             Button("Move to Trash", role: .destructive) { model.trashLargeFile(item) }
         } message: { item in
-            Text("\(item.url.abbreviatedPath) (\(ByteSize.format(item.size)))")
+            Text(verbatim: "\(item.url.abbreviatedPath) (\(ByteSize.format(item.size)))")
         }
     }
 }

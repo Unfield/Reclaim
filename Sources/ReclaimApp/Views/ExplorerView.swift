@@ -132,7 +132,7 @@ struct ExplorerView: View {
         ) { entry in
             Button("Move to Trash", role: .destructive) { model.trashExplorerEntry(entry) }
         } message: { entry in
-            Text("\(entry.url.abbreviatedPath)\(entry.size.map { " (\(ByteSize.format($0)))" } ?? "")")
+            Text(verbatim: "\(entry.url.abbreviatedPath)\(entry.size.map { " (\(ByteSize.format($0)))" } ?? "")")
         }
     }
 }
@@ -168,7 +168,7 @@ private struct Breadcrumbs: View {
         var current = folder.standardizedFileURL
         while true {
             let isStop = current.normalizedPath == stop
-            result.insert((current, isStop ? (volume?.name ?? "Disk") : current.lastPathComponent), at: 0)
+            result.insert((current, isStop ? (volume?.name ?? String(localized: "Disk")) : current.lastPathComponent), at: 0)
             let parent = current.deletingLastPathComponent()
             if isStop || parent.normalizedPath == current.normalizedPath { break }
             current = parent

@@ -4,13 +4,13 @@ import Foundation
 public struct HomebrewTool: MaintenanceTool {
     public let id = "homebrew"
     public let name = "Homebrew"
-    public let summary = "Downloaded bottles and casks, plus old versions of installed packages."
+    public let summary = String(localized: "Downloaded bottles and casks, plus old versions of installed packages.")
     public let safety = SafetyLevel.safe
     public let options = [
         ToolOption(
             id: "autoremove",
-            title: "Remove unneeded dependencies",
-            detail: "Uninstalls formulae that were only installed as dependencies and are no longer needed.",
+            title: String(localized: "Remove unneeded dependencies"),
+            detail: String(localized: "Uninstalls formulae that were only installed as dependencies and are no longer needed."),
             isEnabledByDefault: false,
             safety: .review
         ),
@@ -33,7 +33,7 @@ public struct HomebrewTool: MaintenanceTool {
                 let formulae = Self.parseAutoremoveDryRun(autoremove.output)
                 if !formulae.isEmpty {
                     entries.append(ToolEntry(
-                        title: "Unneeded dependencies",
+                        title: String(localized: "Unneeded dependencies"),
                         detail: formulae.joined(separator: ", "),
                         optionID: "autoremove"
                     ))
@@ -83,9 +83,15 @@ public struct HomebrewTool: MaintenanceTool {
         }
 
         var entries = [ToolEntry]()
-        if cache.count > 0 { entries.append(ToolEntry(title: "Download cache", detail: "\(cache.count) files", size: cache.bytes)) }
-        if versions.count > 0 { entries.append(ToolEntry(title: "Old versions", detail: "\(versions.count) packages", size: versions.bytes)) }
-        if other.count > 0 { entries.append(ToolEntry(title: "Other files", detail: "\(other.count) items", size: other.bytes)) }
+        if cache.count > 0 {
+            entries.append(ToolEntry(title: String(localized: "Download cache"), detail: String(localized: "\(cache.count) files"), size: cache.bytes))
+        }
+        if versions.count > 0 {
+            entries.append(ToolEntry(title: String(localized: "Old versions"), detail: String(localized: "\(versions.count) packages"), size: versions.bytes))
+        }
+        if other.count > 0 {
+            entries.append(ToolEntry(title: String(localized: "Other files"), detail: String(localized: "\(other.count) items"), size: other.bytes))
+        }
         return entries
     }
 

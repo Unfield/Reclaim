@@ -5,6 +5,13 @@ struct AppsView: View {
     enum Filter: String, CaseIterable {
         case unused = "Unused"
         case all = "All Apps"
+
+        var title: String {
+            switch self {
+            case .unused: String(localized: "Unused")
+            case .all: String(localized: "All Apps")
+            }
+        }
     }
 
     @Environment(AppModel.self) private var model
@@ -54,7 +61,7 @@ struct AppsView: View {
                         }
                     }
                     TableColumn("Last Opened", value: \.sortDate) { app in
-                        Text(app.lastUsed?.shortDate ?? "Never")
+                        Text(app.lastUsed?.shortDate ?? String(localized: "Never"))
                             .foregroundStyle(app.lastUsed == nil ? .secondary : .primary)
                     }
                     .width(120)
@@ -77,7 +84,7 @@ struct AppsView: View {
         .topBar {
             HStack(spacing: 10) {
                 Picker("Show", selection: $filter) {
-                    ForEach(Filter.allCases, id: \.self) { Text($0.rawValue) }
+                    ForEach(Filter.allCases, id: \.self) { Text($0.title) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -145,7 +152,7 @@ struct AppsView: View {
 /// An inline search field, so search doesn't add and remove toolbar items when switching screens.
 struct SearchField: View {
     @Binding var text: String
-    let prompt: String
+    let prompt: LocalizedStringKey
 
     var body: some View {
         HStack(spacing: 6) {
@@ -197,7 +204,7 @@ struct UninstallSheet: View {
                     Text([app.version, app.bundleID].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("Last opened: \(app.lastUsed?.shortDate ?? "never")")
+                    Text("Last opened: \(app.lastUsed?.shortDate ?? String(localized: "never"))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

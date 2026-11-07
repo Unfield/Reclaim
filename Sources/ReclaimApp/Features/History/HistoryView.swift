@@ -81,12 +81,12 @@ private struct HistoryContent: View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(alignment: .top, spacing: 16) {
                 StatCard(
-                    title: "Free Now",
+                    title: String(localized: "Free Now"),
                     symbol: mounted?.symbolName ?? (volume.isStartup ? "internaldrive" : "externaldrive"),
                     value: ByteSize.format(free),
                     detail: mounted != nil
-                        ? "of \(ByteSize.format(capacity))"
-                        : "Not connected. Last seen \(volume.lastSeen.formatted(.dateTime.month(.abbreviated).day()))."
+                        ? String(localized: "of \(ByteSize.format(capacity))")
+                        : String(localized: "Not connected. Last seen \(volume.lastSeen.formatted(.dateTime.month(.abbreviated).day())).")
                 )
                 changeCard(since: start)
                 forecastCard(forecast, now: now)
@@ -96,7 +96,7 @@ private struct HistoryContent: View {
 
             if !changes.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionHeader(title: "Biggest Changes", trailing: "\(ByteSize.format(threshold)) or more")
+                    SectionHeader(title: String(localized: "Biggest Changes"), trailing: String(localized: "\(ByteSize.format(threshold)) or more"))
                     Card(padding: 0) {
                         ForEach(changes) { change in
                             ChangeRow(change: change, showsTime: range != .year)
@@ -110,35 +110,40 @@ private struct HistoryContent: View {
 
     private func changeCard(since start: Date) -> StatCard {
         guard let change = volume.change(since: start) else {
-            return StatCard(title: "Change", symbol: "arrow.up.arrow.down", value: "—", detail: "Not enough data yet")
+            return StatCard(title: String(localized: "Change"), symbol: "arrow.up.arrow.down", value: "—", detail: String(localized: "Not enough data yet"))
         }
         let detail: String
         if change.days >= Double(range.days) - 1 {
-            detail = range == .year ? "in the last year" : "in the last \(range.days) days"
+            detail = range == .year ? String(localized: "in the last year") : String(localized: "in the last \(range.days) days")
         } else {
-            detail = "since \(change.start.formatted(.dateTime.month(.abbreviated).day()))"
+            detail = String(localized: "since \(change.start.formatted(.dateTime.month(.abbreviated).day()))")
         }
-        return StatCard(title: "Change", symbol: "arrow.up.arrow.down", value: DiskHistoryFormat.signedSize(change.delta), detail: detail)
+        return StatCard(title: String(localized: "Change"), symbol: "arrow.up.arrow.down", value: DiskHistoryFormat.signedSize(change.delta), detail: detail)
     }
 
     private func forecastCard(_ forecast: DiskForecast?, now: Date) -> StatCard {
-        let title = "Forecast"
+        let title = String(localized: "Forecast")
         let symbol = "chart.line.downtrend.xyaxis"
         guard let forecast else {
-            return StatCard(title: title, symbol: symbol, value: "Collecting data", detail: "Needs at least \(DiskForecaster.minimumDays) days of history")
+            return StatCard(
+                title: title, symbol: symbol, value: String(localized: "Collecting data"),
+                detail: String(localized: "Needs at least \(DiskForecaster.minimumDays) days of history")
+            )
         }
         guard let days = forecast.daysUntilFull, let full = forecast.fullDate else {
             return StatCard(
-                title: title, symbol: symbol, value: "Not filling up",
-                detail: forecast.bytesPerDay < 0 ? "Free space is shrinking very slowly" : "Free space is steady or growing"
+                title: title, symbol: symbol, value: String(localized: "Not filling up"),
+                detail: forecast.bytesPerDay < 0
+                    ? String(localized: "Free space is shrinking very slowly")
+                    : String(localized: "Free space is steady or growing")
             )
         }
         let sameYear = Calendar.current.isDate(full, equalTo: now, toGranularity: .year)
         let date = full.formatted(sameYear ? .dateTime.month(.abbreviated).day() : .dateTime.month(.abbreviated).day().year())
         return StatCard(
             title: title, symbol: symbol,
-            value: days < 1 ? "Full within a day" : "Full around \(date)",
-            detail: "At this rate. Losing about \(ByteSize.format(Int64(-forecast.bytesPerDay))) a day",
+            value: days < 1 ? String(localized: "Full within a day") : String(localized: "Full around \(date)"),
+            detail: String(localized: "At this rate. Losing about \(ByteSize.format(Int64(-forecast.bytesPerDay))) a day"),
             valueTint: days < 7 ? .red : days < 30 ? .orange : nil
         )
     }
@@ -223,7 +228,10 @@ private struct FreeSpaceChart: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Free Space").font(.headline)
                 Spacer()
-                Text(shown.map { "\($0.isForecast ? "Forecast: " : "")\(ByteSize.format($0.free)) free · \(format($0.date))" } ?? " ")
+                Text(shown.map { point in
+                    let text = String(localized: "\(ByteSize.format(point.free)) free · \(format(point.date))")
+                    return point.isForecast ? String(localized: "Forecast: \(text)") : text
+                } ?? " ")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -281,8 +289,8 @@ private struct FreeSpaceChart: View {
             .padding(.top, 14)
 
             HStack(spacing: 16) {
-                LegendItem(title: "Free space", color: tint, dashed: false)
-                LegendItem(title: "At the current rate", color: .secondary, dashed: true)
+                LegendItem(title: String(localized: "Free space"), color: tint, dashed: false)
+                LegendItem(title: String(localized: "At the current rate"), color: .secondary, dashed: true)
                     .opacity(projection.isEmpty ? 0 : 1)
                 Spacer()
                 Text(range == .year ? "Lowest free space each day" : "Recorded hourly while Reclaim runs")
@@ -340,7 +348,9 @@ private struct ChangeRow: View {
         HStack(spacing: 12) {
             IconTile(systemName: change.isGain ? "arrow.up.right" : "arrow.down.right", tint: change.isGain ? .green : .orange, size: 28)
             VStack(alignment: .leading, spacing: 2) {
-                Text(change.isGain ? "Freed up \(ByteSize.format(change.delta))" : "\(ByteSize.format(-change.delta)) used")
+                Text(change.isGain
+                    ? String(localized: "Freed up \(ByteSize.format(change.delta))")
+                    : String(localized: "\(ByteSize.format(-change.delta)) used"))
                 Text(when)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -358,7 +368,7 @@ private struct ChangeRow: View {
     private var when: String {
         let day = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
         if change.end.timeIntervalSince(change.start) > 36 * 3_600 {
-            return "Between \(change.start.formatted(day)) and \(change.end.formatted(day))"
+            return String(localized: "Between \(change.start.formatted(day)) and \(change.end.formatted(day))")
         }
         return showsTime ? change.end.formatted(day.hour().minute()) : change.end.formatted(day)
     }

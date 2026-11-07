@@ -13,17 +13,17 @@ public enum SafetyLevel: Int, Sendable, CaseIterable, Comparable {
 
     public var label: String {
         switch self {
-        case .safe: "Safe"
-        case .review: "Review"
-        case .caution: "Caution"
+        case .safe: String(localized: "Safe")
+        case .review: String(localized: "Review")
+        case .caution: String(localized: "Caution")
         }
     }
 
     public var explanation: String {
         switch self {
-        case .safe: "Rebuilt automatically when needed."
-        case .review: "Usually safe, but may need re-downloading or rebuilding."
-        case .caution: "May contain personal data. Review before removing."
+        case .safe: String(localized: "Rebuilt automatically when needed.")
+        case .review: String(localized: "Usually safe, but may need re-downloading or rebuilding.")
+        case .caution: String(localized: "May contain personal data. Review before removing.")
         }
     }
 }
@@ -33,6 +33,16 @@ public enum CategoryGroup: String, Sendable, CaseIterable {
     case developer = "Developer"
     case personal = "Personal Files"
     case otherDisks = "Other Disks"
+
+    /// The section title shown in the app. The raw value stays English, since it's used as an identifier.
+    public var title: String {
+        switch self {
+        case .system: String(localized: "System & Apps")
+        case .developer: String(localized: "Developer")
+        case .personal: String(localized: "Personal Files")
+        case .otherDisks: String(localized: "Other Disks")
+        }
+    }
 }
 
 public enum CleanupMethod: String, Sendable, CaseIterable {

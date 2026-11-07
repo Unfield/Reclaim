@@ -15,17 +15,17 @@ public enum LaunchItemDomain: Int, Sendable, CaseIterable, Comparable {
 
     public var title: String {
         switch self {
-        case .userAgent: "Your Login Agents"
-        case .systemAgent: "System-Wide Agents"
-        case .systemDaemon: "Background Daemons"
+        case .userAgent: String(localized: "Your Login Agents")
+        case .systemAgent: String(localized: "System-Wide Agents")
+        case .systemDaemon: String(localized: "Background Daemons")
         }
     }
 
     public var explanation: String {
         switch self {
-        case .userAgent: "Start when you log in. They only affect your account."
-        case .systemAgent: "Start when anyone logs in. Changing them needs your password."
-        case .systemDaemon: "Run in the background, even before you log in. Changing them needs your password."
+        case .userAgent: String(localized: "Start when you log in. They only affect your account.")
+        case .systemAgent: String(localized: "Start when anyone logs in. Changing them needs your password.")
+        case .systemDaemon: String(localized: "Run in the background, even before you log in. Changing them needs your password.")
         }
     }
 
@@ -90,59 +90,72 @@ public struct LaunchSchedule: Sendable, Hashable {
 
     /// Short "when" text, e.g. "At login", "Always running", "At login, then every 30 minutes".
     public func summary(for domain: LaunchItemDomain) -> String {
-        if keepAlive == .always { return "Always running" }
-        let start = domain == .systemDaemon ? "At startup" : "At login"
+        if keepAlive == .always { return String(localized: "Always running") }
+        let start = domain == .systemDaemon ? String(localized: "At startup") : String(localized: "At login")
         let periodic = interval.map(Self.describe(interval:)) ?? calendarDescription
         switch (runAtLoad, periodic) {
-        case (true, let periodic?): return "\(start), then \(Self.lowercasedFirst(periodic))"
+        case (true, let periodic?): return String(localized: "\(start), then \(Self.lowercasedFirst(periodic))")
         case (true, nil): return start
         case (false, let periodic?): return periodic
-        case (false, nil): return "When needed"
+        case (false, nil): return String(localized: "When needed")
         }
     }
 
     /// A plain explanation of the restart behavior, if there's anything worth saying.
     public var detail: String? {
         switch keepAlive {
-        case .always: "Keeps itself running"
-        case .conditional: "Restarts itself when needed"
+        case .always: String(localized: "Keeps itself running")
+        case .conditional: String(localized: "Restarts itself when needed")
         case .never: nil
         }
     }
 
     private var calendarDescription: String? {
         guard !calendar.isEmpty else { return nil }
-        guard calendar.count == 1, let entry = calendar.first else { return "On a schedule" }
+        guard calendar.count == 1, let entry = calendar.first else { return String(localized: "On a schedule") }
         return Self.describe(entry)
     }
 
     static func describe(interval seconds: Int) -> String {
         switch seconds {
-        case ..<1: return "Repeatedly"
-        case 1: return "Every second"
-        case 2..<60: return "Every \(seconds) seconds"
-        case 60: return "Every minute"
-        case 86_400: return "Once a day"
-        case 3_600: return "Every hour"
-        case let s where s % 86_400 == 0: return "Every \(s / 86_400) days"
-        case let s where s % 3_600 == 0: return "Every \(s / 3_600) hours"
-        default: return "Every \(Int((Double(seconds) / 60).rounded())) minutes"
+        case ..<1: return String(localized: "Repeatedly")
+        case 1: return String(localized: "Every second")
+        case 2..<60: return String(localized: "Every \(seconds) seconds")
+        case 60: return String(localized: "Every minute")
+        case 86_400: return String(localized: "Once a day")
+        case 3_600: return String(localized: "Every hour")
+        case let s where s % 86_400 == 0: return String(localized: "Every \(s / 86_400) days")
+        case let s where s % 3_600 == 0: return String(localized: "Every \(s / 3_600) hours")
+        default: return String(localized: "Every \(Int((Double(seconds) / 60).rounded())) minutes")
         }
     }
 
     static func describe(_ entry: CalendarEntry) -> String {
         let time: String? = entry.hour.map { String(format: "%02d:%02d", $0, entry.minute ?? 0) }
-        let weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        if entry.month != nil { return "On a schedule" }
-        if let weekday = entry.weekday, weekdays.indices.contains(weekday) {
-            return "Every \(weekdays[weekday])" + (time.map { " at \($0)" } ?? "")
+        if entry.month != nil { return String(localized: "On a schedule") }
+        if let weekday = entry.weekday, let every = everyWeekday(weekday) {
+            return time.map { String(localized: "\(every) at \($0)") } ?? every
         }
         if let day = entry.day {
-            return "Monthly on day \(day)" + (time.map { " at \($0)" } ?? "")
+            return time.map { String(localized: "Monthly on day \(day) at \($0)") } ?? String(localized: "Monthly on day \(day)")
         }
-        if let time { return "Daily at \(time)" }
-        if let minute = entry.minute { return String(format: "Hourly at :%02d", minute) }
-        return "Every minute"
+        if let time { return String(localized: "Daily at \(time)") }
+        if let minute = entry.minute { return String(localized: "Hourly at :\(String(format: "%02d", minute))") }
+        return String(localized: "Every minute")
+    }
+
+    /// launchd numbers weekdays 0 (Sunday) to 7 (Sunday again).
+    private static func everyWeekday(_ weekday: Int) -> String? {
+        switch weekday {
+        case 0, 7: String(localized: "Every Sunday")
+        case 1: String(localized: "Every Monday")
+        case 2: String(localized: "Every Tuesday")
+        case 3: String(localized: "Every Wednesday")
+        case 4: String(localized: "Every Thursday")
+        case 5: String(localized: "Every Friday")
+        case 6: String(localized: "Every Saturday")
+        default: nil
+        }
     }
 
     private static func lowercasedFirst(_ text: String) -> String {
@@ -166,9 +179,9 @@ public enum LaunchItemStatus: Sendable, Hashable {
 
     public var label: String {
         switch self {
-        case .on: "On"
-        case .off: "Off"
-        case .broken: "Broken"
+        case .on: String(localized: "On")
+        case .off: String(localized: "Off")
+        case .broken: String(localized: "Broken")
         }
     }
 }
@@ -228,7 +241,7 @@ public struct LaunchItem: Identifiable, Sendable, Hashable {
     /// What's wrong, in plain English.
     public var problem: String? {
         guard isBroken else { return nil }
-        return program == nil ? "Doesn't say what to run" : "Program is missing"
+        return program == nil ? String(localized: "Doesn't say what to run") : String(localized: "Program is missing")
     }
 
     /// The command it runs, with the home folder shortened to `~`.
@@ -509,16 +522,16 @@ public enum LaunchItems {
     /// Characters launchd labels use in practice. Anything else is refused rather than passed to a shell.
     static func validate(_ item: LaunchItem, context: Context) throws {
         guard !isApple(item.label) else {
-            throw LaunchItemError.notAllowed("\(item.label) is part of macOS and can't be changed.")
+            throw LaunchItemError.notAllowed(String(localized: "\(item.label) is part of macOS and can't be changed."))
         }
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-@+")
         guard item.label.unicodeScalars.allSatisfy(allowed.contains) else {
-            throw LaunchItemError.notAllowed("\(item.label) has an unusual name, so Reclaim won't change it.")
+            throw LaunchItemError.notAllowed(String(localized: "\(item.label) has an unusual name, so Reclaim won't change it."))
         }
         let folder = item.domain.directory(home: context.home).standardizedFileURL.path(percentEncoded: false)
         let parent = item.plistURL.deletingLastPathComponent().standardizedFileURL.path(percentEncoded: false)
         guard folder.trimmingSuffix("/") == parent.trimmingSuffix("/") else {
-            throw LaunchItemError.notAllowed("\(item.plistURL.lastPathComponent) isn't in a launch agent or daemon folder.")
+            throw LaunchItemError.notAllowed(String(localized: "\(item.plistURL.lastPathComponent) isn't in a launch agent or daemon folder."))
         }
     }
 
@@ -537,12 +550,14 @@ public enum LaunchItems {
     public static func setEnabled(_ enabled: Bool, _ item: LaunchItem, allowAdministrator: Bool, context: Context = .current) async throws {
         try validate(item, context: context)
         if enabled && item.isBroken {
-            throw LaunchItemError.notAllowed("\(item.displayName) can't be turned on because its program is missing.")
+            throw LaunchItemError.notAllowed(String(localized: "\(item.displayName) can't be turned on because its program is missing."))
         }
         let commands = commands(for: item, enable: enabled, uid: context.uid)
         let what = "\(enabled ? "Turning on" : "Turning off") \(item.label)"
         try await run(commands, item: item, allowAdministrator: allowAdministrator, description: what,
-                      prompt: "Reclaim needs your password to turn \(enabled ? "on" : "off") \(item.displayName).")
+                      prompt: enabled
+                          ? String(localized: "Reclaim needs your password to turn on \(item.displayName).")
+                          : String(localized: "Reclaim needs your password to turn off \(item.displayName)."))
     }
 
     /// Removes a broken job: stops it if launchd still has it, then moves its plist to the Trash.
@@ -551,7 +566,7 @@ public enum LaunchItems {
     public static func remove(_ item: LaunchItem, allowAdministrator: Bool, context: Context = .current) async throws -> TrashRecord? {
         try validate(item, context: context)
         guard item.isBroken else {
-            throw LaunchItemError.notAllowed("Only items whose program is missing can be removed. Turn \(item.displayName) off instead.")
+            throw LaunchItemError.notAllowed(String(localized: "Only items whose program is missing can be removed. Turn \(item.displayName) off instead."))
         }
         let target = "\(item.domain.launchctlDomain(uid: context.uid))/\(item.label)"
         let source = item.plistURL.path(percentEncoded: false)
@@ -571,7 +586,7 @@ public enum LaunchItems {
         let script = "/bin/launchctl bootout \(Shell.shellQuote(target)) 2>/dev/null; /bin/mv -n \(Shell.shellQuote(source)) \(Shell.shellQuote(destination.path(percentEncoded: false)))"
         let result = try await runPrivileged(script, allowAdministrator: allowAdministrator,
                                              description: "Removing \(item.label)",
-                                             prompt: "Reclaim needs your password to move \(item.displayName)'s launch file to the Trash.")
+                                             prompt: String(localized: "Reclaim needs your password to move \(item.displayName)'s launch file to the Trash."))
         guard result.succeeded else { throw ShellError.failed(command: "mv", message: result.failureMessage) }
         return nil
     }

@@ -11,17 +11,17 @@ public enum MemoryPressure: Int, Sendable, Comparable {
 
     public var label: String {
         switch self {
-        case .normal: "Normal"
-        case .warning: "Elevated"
-        case .critical: "Critical"
+        case .normal: String(localized: "Normal")
+        case .warning: String(localized: "Elevated")
+        case .critical: String(localized: "Critical")
         }
     }
 
     public var explanation: String {
         switch self {
-        case .normal: "Your Mac has plenty of memory available. Nothing to do."
-        case .warning: "macOS is compressing memory to make room. Quitting apps you aren't using will help."
-        case .critical: "Your Mac is short on memory and may feel slow. Quit memory-heavy apps you don't need."
+        case .normal: String(localized: "Your Mac has plenty of memory available. Nothing to do.")
+        case .warning: String(localized: "macOS is compressing memory to make room. Quitting apps you aren't using will help.")
+        case .critical: String(localized: "Your Mac is short on memory and may feel slow. Quit memory-heavy apps you don't need.")
         }
     }
 }
@@ -201,11 +201,11 @@ public enum MemoryMonitor {
     /// Asks a standalone process to exit (SIGTERM). Apps should be quit through AppKit instead so they can save.
     public static func terminate(_ group: ProcessGroup) throws {
         guard !group.isSystem else {
-            throw UninstallError.notAllowed("\(group.name) is part of macOS and can't be terminated.")
+            throw UninstallError.notAllowed(String(localized: "\(group.name) is part of macOS and can't be terminated."))
         }
         for pid in group.pids where pid != getpid() {
             if kill(pid, SIGTERM) != 0 && errno != ESRCH {
-                throw UninstallError.notAllowed("Couldn't terminate \(group.name): \(String(cString: strerror(errno))).")
+                throw UninstallError.notAllowed(String(localized: "Couldn't terminate \(group.name): \(String(cString: strerror(errno)))."))
             }
         }
     }
@@ -219,7 +219,7 @@ public enum MemoryMonitor {
             result = try await Shell.run("/usr/sbin/purge", timeout: 120)
         } else if allowAdministrator {
             result = try await Shell.runAsAdministrator(
-                "/usr/sbin/purge", [], prompt: "Reclaim needs your password to clear the memory caches."
+                "/usr/sbin/purge", [], prompt: String(localized: "Reclaim needs your password to clear the memory caches.")
             )
         } else {
             throw ShellError.failed(command: "purge", message: "needs administrator rights (run with sudo, or pass --admin)")

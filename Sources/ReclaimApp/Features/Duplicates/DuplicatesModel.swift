@@ -170,16 +170,19 @@ final class DuplicatesModel {
         isTrashing = false
 
         let count = result.trashed.count
-        app.recordTrash(title: count == 1 ? "Removed 1 duplicate" : "Removed \(count) duplicates", records: result.trashed)
+        app.recordTrash(
+            title: count == 1 ? String(localized: "Removed 1 duplicate") : String(localized: "Removed \(count) duplicates"),
+            records: result.trashed
+        )
         app.didRemoveFiles()
 
         self.groups = DuplicateGroup.removing(Set(result.removed.map(\.url)), from: self.groups)
         selection.prune(to: self.groups)
 
         if !result.skipped.isEmpty {
-            let lines = result.skipped.prefix(5).map { "\($0.file.name): \($0.reason.localizedDescription)" }
-            let more = result.skipped.count > 5 ? ["…and \(result.skipped.count - 5) more."] : []
-            removalProblem = (lines + more).joined(separator: "\n") + "\n\nScan again to see the current state."
+            let lines = result.skipped.prefix(5).map { String(localized: "\($0.file.name): \($0.reason.localizedDescription)") }
+            let more = result.skipped.count > 5 ? [String(localized: "…and \(result.skipped.count - 5) more.")] : []
+            removalProblem = (lines + more).joined(separator: "\n") + "\n\n" + String(localized: "Scan again to see the current state.")
         }
     }
 }

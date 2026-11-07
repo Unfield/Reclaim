@@ -19,8 +19,8 @@ public enum CategoryCatalog {
             // MARK: System & Apps
             CleanupCategory(
                 id: "user-caches",
-                name: "App Caches",
-                summary: "Caches stored by apps in ~/Library/Caches. Apps recreate these as needed.",
+                name: String(localized: "App Caches"),
+                summary: String(localized: "Caches stored by apps in ~/Library/Caches. Apps recreate these as needed."),
                 group: .system,
                 safety: .safe,
                 roots: [path("Library/Caches")],
@@ -29,16 +29,16 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "user-logs",
-                name: "Logs",
-                summary: "Diagnostic logs written by apps and the system for your user account.",
+                name: String(localized: "Logs"),
+                summary: String(localized: "Diagnostic logs written by apps and the system for your user account."),
                 group: .system,
                 safety: .safe,
                 roots: [path("Library/Logs")]
             ),
             CleanupCategory(
                 id: "trash",
-                name: "Trash",
-                summary: "Items already in your Trash. Emptying it deletes them for good.",
+                name: String(localized: "Trash"),
+                summary: String(localized: "Items already in your Trash. Emptying it deletes them for good."),
                 group: .system,
                 safety: .safe,
                 roots: [path(".Trash")],
@@ -46,16 +46,16 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "mail-downloads",
-                name: "Mail Downloads",
-                summary: "Copies of attachments you opened in Mail. The originals stay in your mailbox.",
+                name: String(localized: "Mail Downloads"),
+                summary: String(localized: "Copies of attachments you opened in Mail. The originals stay in your mailbox."),
                 group: .system,
                 safety: .review,
                 roots: [path("Library/Containers/com.apple.mail/Data/Library/Mail Downloads")]
             ),
             CleanupCategory(
                 id: "ios-backups",
-                name: "iPhone & iPad Backups",
-                summary: "Local device backups made by Finder. Needs Full Disk Access to read.",
+                name: String(localized: "iPhone & iPad Backups"),
+                summary: String(localized: "Local device backups made by Finder. Needs Full Disk Access to read."),
                 group: .system,
                 safety: .caution,
                 roots: [path("Library/Application Support/MobileSync/Backup")]
@@ -64,16 +64,16 @@ public enum CategoryCatalog {
             // MARK: Developer
             CleanupCategory(
                 id: "xcode-derived-data",
-                name: "Xcode DerivedData",
-                summary: "Build products and indexes. Xcode rebuilds them on the next build.",
+                name: String(localized: "Xcode DerivedData"),
+                summary: String(localized: "Build products and indexes. Xcode rebuilds them on the next build."),
                 group: .developer,
                 safety: .safe,
                 roots: [path("Library/Developer/Xcode/DerivedData")]
             ),
             CleanupCategory(
                 id: "xcode-device-support",
-                name: "Device Support Files",
-                summary: "Debug symbols for devices you've connected. Re-copied when a device is plugged in.",
+                name: String(localized: "Device Support Files"),
+                summary: String(localized: "Debug symbols for devices you've connected. Re-copied when a device is plugged in."),
                 group: .developer,
                 safety: .review,
                 roots: [
@@ -85,24 +85,24 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "xcode-archives",
-                name: "Xcode Archives",
-                summary: "Archived app builds. Keep these if you need to symbolicate crash reports.",
+                name: String(localized: "Xcode Archives"),
+                summary: String(localized: "Archived app builds. Keep these if you need to symbolicate crash reports."),
                 group: .developer,
                 safety: .caution,
                 roots: [path("Library/Developer/Xcode/Archives")]
             ),
             CleanupCategory(
                 id: "simulator-caches",
-                name: "Simulator Caches",
-                summary: "Shared caches used by the iOS Simulator.",
+                name: String(localized: "Simulator Caches"),
+                summary: String(localized: "Shared caches used by the iOS Simulator."),
                 group: .developer,
                 safety: .safe,
                 roots: [path("Library/Developer/CoreSimulator/Caches")]
             ),
             CleanupCategory(
                 id: "package-caches",
-                name: "Package Manager Caches",
-                summary: "Download caches for npm, Gradle, Cargo, uv and other tools. Re-downloaded on demand.",
+                name: String(localized: "Package Manager Caches"),
+                summary: String(localized: "Download caches for npm, Gradle, Cargo, uv and other tools. Re-downloaded on demand."),
                 group: .developer,
                 safety: .review,
                 roots: [
@@ -117,16 +117,16 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "android-images",
-                name: "Android Emulator Images",
-                summary: "System images used by the Android emulator. Re-downloaded by Android Studio when needed.",
+                name: String(localized: "Android Emulator Images"),
+                summary: String(localized: "System images used by the Android emulator. Re-downloaded by Android Studio when needed."),
                 group: .developer,
                 safety: .review,
                 roots: [path("Library/Android/sdk/system-images"), path(".android/cache")]
             ),
             CleanupCategory(
                 id: "jetbrains-old-versions",
-                name: "Old JetBrains IDE Data",
-                summary: "Settings and indexes left behind by older versions of IntelliJ, PyCharm, WebStorm and friends.",
+                name: String(localized: "Old JetBrains IDE Data"),
+                summary: String(localized: "Settings and indexes left behind by older versions of IntelliJ, PyCharm, WebStorm and friends."),
                 group: .developer,
                 safety: .review,
                 roots: [path("Library/Application Support/JetBrains")],
@@ -134,8 +134,8 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "editor-old-extensions",
-                name: "Old Editor Extensions",
-                summary: "Outdated versions of VS Code, Cursor and Windsurf extensions that were kept after updating.",
+                name: String(localized: "Old Editor Extensions"),
+                summary: String(localized: "Outdated versions of VS Code, Cursor and Windsurf extensions that were kept after updating."),
                 group: .developer,
                 safety: .safe,
                 roots: [path(".vscode/extensions"), path(".cursor/extensions"), path(".windsurf/extensions")],
@@ -143,8 +143,8 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "unity-cache",
-                name: "Unity Cache",
-                summary: "Downloaded Asset Store packages and the global Unity cache.",
+                name: String(localized: "Unity Cache"),
+                summary: String(localized: "Downloaded Asset Store packages and the global Unity cache."),
                 group: .developer,
                 safety: .review,
                 roots: [path("Library/Unity/cache"), path("Library/Unity/Asset Store-5.x")]
@@ -153,8 +153,8 @@ public enum CategoryCatalog {
             // MARK: Personal
             CleanupCategory(
                 id: "installers",
-                name: "Leftover Installers",
-                summary: "Disk images, installer packages, iOS firmware and macOS installers you've probably already used.",
+                name: String(localized: "Leftover Installers"),
+                summary: String(localized: "Disk images, installer packages, iOS firmware and macOS installers you've probably already used."),
                 group: .personal,
                 safety: .review,
                 roots: [
@@ -167,8 +167,8 @@ public enum CategoryCatalog {
             ),
             CleanupCategory(
                 id: "old-downloads",
-                name: "Old Downloads",
-                summary: "Items in Downloads that haven't been modified in \(oldDownloadsDays) days.",
+                name: String(localized: "Old Downloads"),
+                summary: String(localized: "Items in Downloads that haven't been modified in \(oldDownloadsDays) days."),
                 group: .personal,
                 safety: .caution,
                 roots: [path("Downloads")],
@@ -193,8 +193,8 @@ public enum CategoryCatalog {
             .map { volume in
                 CleanupCategory(
                     id: volumeTrashID(for: volume),
-                    name: "Trash on \(volume.name)",
-                    summary: "Items you deleted from \(volume.name). They still take up space on that disk.",
+                    name: String(localized: "Trash on \(volume.name)"),
+                    summary: String(localized: "Items you deleted from \(volume.name). They still take up space on that disk."),
                     group: .otherDisks,
                     safety: .safe,
                     roots: [volume.url.appending(path: ".Trashes/\(userID)", directoryHint: .isDirectory)],

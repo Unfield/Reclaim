@@ -13,9 +13,9 @@ extension LaunchItemStatus {
 
     var help: String {
         switch self {
-        case .on: "Starts automatically."
-        case .off: "Turned off. It won't start automatically."
-        case .broken: "Its program is missing, so it can't start."
+        case .on: String(localized: "Starts automatically.")
+        case .off: String(localized: "Turned off. It won't start automatically.")
+        case .broken: String(localized: "Its program is missing, so it can't start.")
         }
     }
 }
@@ -116,7 +116,7 @@ struct LoginItemsView: View {
                 Button("Move to Trash", role: .destructive) {
                     Task {
                         if let record = await loginItems.remove(item) {
-                            model.recordTrash(title: "Removed login item \(item.displayName)", records: [record])
+                            model.recordTrash(title: String(localized: "Removed login item \(item.displayName)"), records: [record])
                         }
                     }
                 }
@@ -127,33 +127,36 @@ struct LoginItemsView: View {
     }
 
     private func countText(_ count: Int) -> String {
-        count == 1 ? "1 item" : "\(count) items"
+        count == 1 ? String(localized: "1 item") : String(localized: "\(count) items")
     }
 
     private func summary(_ loginItems: LoginItemsModel) -> String {
         let total = countText(loginItems.items.count)
         let broken = loginItems.brokenCount
-        return broken > 0 ? "\(total) · \(broken) broken" : total
+        return broken > 0 ? total + " · " + String(localized: "\(broken) broken") : total
     }
 
     private var pendingTitle: String {
         switch pending {
-        case .disable(let item): "Turn off \(item.displayName)?"
-        case .remove(let item): "Remove \(item.displayName)?"
+        case .disable(let item): String(localized: "Turn off \(item.displayName)?")
+        case .remove(let item): String(localized: "Remove \(item.displayName)?")
         case nil: ""
         }
     }
 
     private func pendingMessage(_ action: PendingAction) -> String {
-        let password = action.item.domain.requiresAdministrator ? " You'll be asked for your password." : ""
+        var lines = [String]()
         switch action {
         case .disable(let item):
-            let app = item.appName ?? "Its app"
-            return "It stops now and won't start automatically until you turn it back on. \(app) may lose features like automatic updates or syncing.\(password)"
+            lines.append(String(localized: "It stops now and won't start automatically until you turn it back on."))
+            lines.append(item.appName.map { String(localized: "\($0) may lose features like automatic updates or syncing.") }
+                ?? String(localized: "Its app may lose features like automatic updates or syncing."))
         case .remove(let item):
-            let undo = item.domain.requiresAdministrator ? "" : " You can put it back from Recently Removed."
-            return "Its program is missing, so it can't run anyway. Its launch file moves to the Trash.\(undo)\(password)"
+            lines.append(String(localized: "Its program is missing, so it can't run anyway. Its launch file moves to the Trash."))
+            if !item.domain.requiresAdministrator { lines.append(String(localized: "You can put it back from Recently Removed.")) }
         }
+        if action.item.domain.requiresAdministrator { lines.append(String(localized: "You'll be asked for your password.")) }
+        return lines.joined(separator: " ")
     }
 }
 
@@ -228,7 +231,7 @@ private struct LaunchItemRow: View {
                 Button("Show Program in Finder") { AppModel.revealInFinder(URL(filePath: program)) }
             }
             if let app = item.appURL {
-                Button("Show \(item.appName ?? "App") in Finder") { AppModel.revealInFinder(app) }
+                Button("Show \(item.appName ?? String(localized: "App")) in Finder") { AppModel.revealInFinder(app) }
             }
             Divider()
             Button("Copy Label") {
@@ -261,7 +264,7 @@ private struct LaunchItemRow: View {
         var parts = [item.schedule.summary(for: item.domain)]
         // "Always running" already says it keeps itself running.
         if let detail = item.schedule.detail, item.schedule.keepAlive != .always { parts.append(detail) }
-        if item.isRunning { parts.append("Running now") }
+        if item.isRunning { parts.append(String(localized: "Running now")) }
         return parts.joined(separator: " · ")
     }
 }

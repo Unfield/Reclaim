@@ -7,9 +7,9 @@ public enum CleanupError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .outsideCategoryRoots(let url):
-            "Refusing to remove \(url.abbreviatedPath): it isn't directly inside one of the category's folders."
+            String(localized: "Refusing to remove \(url.abbreviatedPath): it isn't directly inside one of the category's folders.")
         case .excluded(let url):
-            "Skipped \(url.abbreviatedPath): it's on your exclusion list."
+            String(localized: "Skipped \(url.abbreviatedPath): it's on your exclusion list.")
         }
     }
 }

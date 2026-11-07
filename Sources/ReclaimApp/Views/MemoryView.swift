@@ -17,10 +17,10 @@ private enum MemorySegment: CaseIterable {
 
     var title: String {
         switch self {
-        case .app: "App Memory"
-        case .wired: "Wired"
-        case .compressed: "Compressed"
-        case .cached: "Cached Files"
+        case .app: String(localized: "App Memory")
+        case .wired: String(localized: "Wired")
+        case .compressed: String(localized: "Compressed")
+        case .cached: String(localized: "Cached Files")
         }
     }
 
@@ -35,10 +35,10 @@ private enum MemorySegment: CaseIterable {
 
     var help: String {
         switch self {
-        case .app: "Memory used by apps and their helper processes."
-        case .wired: "Memory the system needs to keep in RAM at all times."
-        case .compressed: "Memory macOS compressed to make room. Some compression is normal."
-        case .cached: "Recently used files kept in RAM for speed. Given back instantly when apps need it."
+        case .app: String(localized: "Memory used by apps and their helper processes.")
+        case .wired: String(localized: "Memory the system needs to keep in RAM at all times.")
+        case .compressed: String(localized: "Memory macOS compressed to make room. Some compression is normal.")
+        case .cached: String(localized: "Recently used files kept in RAM for speed. Given back instantly when apps need it.")
         }
     }
 
@@ -77,7 +77,10 @@ struct MemoryView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionHeader(title: "Using the Most Memory", trailing: groups.isEmpty ? nil : "Your apps and processes")
+                    SectionHeader(
+                        title: String(localized: "Using the Most Memory"),
+                        trailing: groups.isEmpty ? nil : String(localized: "Your apps and processes")
+                    )
                     Card(padding: 0) {
                         if groups.isEmpty {
                             ProgressView().frame(maxWidth: .infinity, minHeight: 80)
@@ -132,14 +135,14 @@ struct MemoryView: View {
             }
         } message: { pending in
             Text(pending.force
-                ? "Unsaved changes in \(pending.group.name) will be lost."
-                : "Frees about \(ByteSize.formatMemory(pending.group.memory)). \(pending.group.name) may ask you to save changes.")
+                ? String(localized: "Unsaved changes in \(pending.group.name) will be lost.")
+                : String(localized: "Frees about \(ByteSize.formatMemory(pending.group.memory)). \(pending.group.name) may ask you to save changes."))
         }
     }
 
     private var quitTitle: String {
         guard let pending = pendingQuit else { return "" }
-        return "\(pending.force ? "Force quit" : "Quit") \(pending.group.name)?"
+        return pending.force ? String(localized: "Force quit \(pending.group.name)?") : String(localized: "Quit \(pending.group.name)?")
     }
 }
 
@@ -306,7 +309,7 @@ private struct ProcessRow: View {
                 .controlSize(.small)
                 .opacity(canQuit ? 1 : 0)
                 .disabled(!canQuit)
-                .frame(width: 56)
+                .frame(width: 68) // Room for longer translations, e.g. "Beenden"
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -324,9 +327,9 @@ private struct ProcessRow: View {
 
     private var subtitle: String {
         var parts = [String]()
-        if group.processCount > 1 { parts.append("\(group.processCount) processes") }
-        if group.isSystem { parts.append("Part of macOS") }
-        return parts.isEmpty ? (group.bundleURL == nil ? group.id : "App") : parts.joined(separator: " · ")
+        if group.processCount > 1 { parts.append(String(localized: "\(group.processCount) processes")) }
+        if group.isSystem { parts.append(String(localized: "Part of macOS")) }
+        return parts.isEmpty ? (group.bundleURL == nil ? group.id : String(localized: "App")) : parts.joined(separator: " · ")
     }
 }
 

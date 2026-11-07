@@ -39,7 +39,10 @@ struct ProjectsView: View {
     @State private var tableSelection = Set<URL>()
     @State private var pendingTrash: [ProjectJunk]?
 
-    private static let dayOptions: [(days: Int, label: String)] = [(30, "30 days"), (90, "90 days"), (180, "6 months"), (365, "1 year")]
+    private static let dayOptions: [(days: Int, label: String)] = [
+        (30, String(localized: "30 days")), (90, String(localized: "90 days")),
+        (180, String(localized: "6 months")), (365, String(localized: "1 year")),
+    ]
 
     var body: some View {
         @Bindable var projects = model.projects
@@ -50,7 +53,7 @@ struct ProjectsView: View {
             .topBar {
                 HStack(spacing: 10) {
                     Picker("Show", selection: $projects.filter) {
-                        ForEach(ProjectsModel.Filter.allCases, id: \.self) { Text($0.rawValue) }
+                        ForEach(ProjectsModel.Filter.allCases, id: \.self) { Text($0.title) }
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -145,7 +148,7 @@ struct ProjectsView: View {
             ContentUnavailableView {
                 Label("No Inactive Projects", systemImage: "checkmark.circle")
             } description: {
-                Text("Every project with build folders changed in the last \(periodDescription(projects.inactiveDays)).")
+                Text("Every project with build folders changed \(periodDescription(projects.inactiveDays)).")
             } actions: {
                 Button("Show All Projects") { projects.filter = .all }
             }
@@ -205,7 +208,7 @@ struct ProjectsView: View {
             TableColumn("Last Active", value: \.sortLastActive) { item in
                 Text(item.lastActive?.shortDate ?? "—")
                     .foregroundStyle(.secondary)
-                    .help(item.lastActive.map { "Changed \($0.formatted(.relative(presentation: .named)))" } ?? "")
+                    .help(item.lastActive.map { String(localized: "Changed \($0.formatted(.relative(presentation: .named)))") } ?? "")
             }
             .width(110)
 
@@ -246,7 +249,7 @@ struct ProjectsView: View {
     private var foldersMenu: some View {
         let projects = model.projects
         let roots = projects.roots
-        let title = roots.isEmpty ? "Choose Folders" : roots.count == 1 ? roots[0].lastPathComponent : "\(roots.count) Folders"
+        let title = roots.isEmpty ? String(localized: "Choose Folders") : roots.count == 1 ? roots[0].lastPathComponent : String(localized: "\(roots.count) Folders")
 
         return Menu {
             if !roots.isEmpty {
@@ -257,7 +260,7 @@ struct ProjectsView: View {
                             Button("Remove") { projects.removeRoot(root) }
                         } label: {
                             Label(
-                                ProjectsModel.isAvailable(root) ? root.abbreviatedPath : "\(root.abbreviatedPath) (not connected)",
+                                ProjectsModel.isAvailable(root) ? root.abbreviatedPath : String(localized: "\(root.abbreviatedPath) (not connected)"),
                                 systemImage: VolumeInfo.volume(containing: root, in: model.volumes)?.symbolName ?? "folder"
                             )
                         }
@@ -288,32 +291,34 @@ struct ProjectsView: View {
 
     private func periodDescription(_ days: Int) -> String {
         switch days {
-        case 365: "year"
-        case 180: "6 months"
-        default: "\(days) days"
+        case 365: String(localized: "in the last year")
+        case 180: String(localized: "in the last 6 months")
+        default: String(localized: "in the last \(days) days")
         }
     }
 
     private func status(visible: [ProjectJunk], chosen: [ProjectJunk]) -> String {
-        if visible.isEmpty { return model.projects.isScanning ? "Looking for projects…" : "" }
+        if visible.isEmpty { return model.projects.isScanning ? String(localized: "Looking for projects…") : "" }
         let size = chosen.reduce(Int64(0)) { $0 + ($1.size ?? 0) }
-        return "\(chosen.count) of \(visible.count) selected · \(ByteSize.format(size))"
+        return String(localized: "\(chosen.count) of \(visible.count) selected · \(ByteSize.format(size))")
     }
 
     private var trashTitle: String {
         guard let items = pendingTrash else { return "" }
-        if items.count == 1, let item = items.first { return "Move \(item.name) from \(item.projectName) to the Trash?" }
-        return "Move \(items.count) folders to the Trash?"
+        if items.count == 1, let item = items.first { return String(localized: "Move \(item.name) from \(item.projectName) to the Trash?") }
+        return String(localized: "Move \(items.count) folders to the Trash?")
     }
 
     private func trashMessage(_ items: [ProjectJunk]) -> String {
         let size = ByteSize.format(items.reduce(0) { $0 + ($1.size ?? 0) })
-        let amount = items.contains { $0.size == nil } ? "At least \(size)" : size
+        let amount = items.contains { $0.size == nil } ? String(localized: "At least \(size)") : size
         let projectCount = Set(items.map(\.project)).count
         if items.count == 1, let item = items.first {
-            return "\(amount). Rebuild it anytime with “\(item.rebuildHint)”. You can also put it back from Recently Removed."
+            return String(localized: "\(amount). Rebuild it anytime with “\(item.rebuildHint)”. You can also put it back from Recently Removed.")
         }
-        let from = projectCount == 1 ? "from 1 project" : "from \(projectCount) projects"
-        return "\(amount) \(from). Each project can rebuild them with its usual install or build command. You can also put them back from Recently Removed."
+        let from = projectCount == 1
+            ? String(localized: "\(amount) from 1 project.")
+            : String(localized: "\(amount) from \(projectCount) projects.")
+        return from + " " + String(localized: "Each project can rebuild them with its usual install or build command. You can also put them back from Recently Removed.")
     }
 }

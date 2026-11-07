@@ -105,7 +105,7 @@ struct ToolDetailView: View {
     private func readyContent(_ status: ToolStatus, state: ToolState) -> some View {
         if !tool.options.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                SectionHeader(title: "Options")
+                SectionHeader(title: String(localized: "Options"))
                 Card(padding: 0) {
                     ForEach(tool.options) { option in
                         Toggle(isOn: Binding(
@@ -134,7 +134,7 @@ struct ToolDetailView: View {
         }
 
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: isTimeMachine ? "Local Snapshots" : "What Will Be Removed")
+            SectionHeader(title: isTimeMachine ? String(localized: "Local Snapshots") : String(localized: "What Will Be Removed"))
             Card(padding: 0) {
                 if status.entries.isEmpty {
                     Text(isTimeMachine ? "No local snapshots." : "Nothing to clean up.")
@@ -185,16 +185,17 @@ struct ToolDetailView: View {
     }
 
     private var confirmTitle: String {
-        if isTimeMachine { return "Delete all local Time Machine snapshots?" }
-        return "Clean up \(model.toolReclaimable(tool.id).map(ByteSize.format) ?? tool.name)?"
+        if isTimeMachine { return String(localized: "Delete all local Time Machine snapshots?") }
+        return String(localized: "Clean up \(model.toolReclaimable(tool.id).map(ByteSize.format) ?? tool.name)?")
     }
 
     private var confirmMessage: String {
         if isTimeMachine {
-            return "Backups on your Time Machine disk aren't affected. You may be asked for an administrator password."
+            return String(localized: "Backups on your Time Machine disk aren't affected. You may be asked for an administrator password.")
         }
         let enabled = tool.options.filter { model.toolState(tool.id).options.contains($0.id) }.map(\.title)
-        let optionsText = enabled.isEmpty ? "" : "\nIncluding: \(enabled.joined(separator: ", "))."
-        return "This runs \(tool.name)'s own cleanup and can't be undone.\(optionsText)"
+        let message = String(localized: "This runs \(tool.name)'s own cleanup and can't be undone.")
+        guard !enabled.isEmpty else { return message }
+        return message + "\n" + String(localized: "Including: \(enabled.joined(separator: ", ")).")
     }
 }

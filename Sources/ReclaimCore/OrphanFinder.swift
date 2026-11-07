@@ -34,16 +34,16 @@ public enum LeftoverKind: String, Sendable, CaseIterable, Hashable {
 
     public var title: String {
         switch self {
-        case .applicationSupport: "App Data"
-        case .caches: "Cache"
-        case .containers: "Container"
-        case .preferences: "Settings"
-        case .savedState: "Saved Windows"
-        case .httpStorages: "Web Storage"
-        case .webKit: "WebKit Data"
-        case .logs: "Logs"
-        case .applicationScripts: "Scripts"
-        case .cookies: "Cookies"
+        case .applicationSupport: String(localized: "App Data")
+        case .caches: String(localized: "Cache")
+        case .containers: String(localized: "Container")
+        case .preferences: String(localized: "Settings")
+        case .savedState: String(localized: "Saved Windows")
+        case .httpStorages: String(localized: "Web Storage")
+        case .webKit: String(localized: "WebKit Data")
+        case .logs: String(localized: "Logs")
+        case .applicationScripts: String(localized: "Scripts")
+        case .cookies: String(localized: "Cookies")
         }
     }
 
@@ -133,11 +133,11 @@ public enum LeftoverError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .notALeftover(let url): "\(url.abbreviatedPath) isn't a known leftover location."
-        case .stillInstalled(let id): "An app with the ID \(id) is installed or running."
-        case .symbolicLink(let url): "\(url.abbreviatedPath) is a symbolic link."
-        case .excluded(let url): "\(url.abbreviatedPath) is in your exclusion list."
-        case .missing(let url): "\(url.abbreviatedPath) no longer exists."
+        case .notALeftover(let url): String(localized: "\(url.abbreviatedPath) isn't a known leftover location.")
+        case .stillInstalled(let id): String(localized: "An app with the ID \(id) is installed or running.")
+        case .symbolicLink(let url): String(localized: "\(url.abbreviatedPath) is a symbolic link.")
+        case .excluded(let url): String(localized: "\(url.abbreviatedPath) is in your exclusion list.")
+        case .missing(let url): String(localized: "\(url.abbreviatedPath) no longer exists.")
         }
     }
 }

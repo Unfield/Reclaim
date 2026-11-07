@@ -86,17 +86,17 @@ struct ContentView: View {
 
     private var reportTitle: String {
         guard let report = model.lastReport else { return "" }
-        return report.total > 0 ? "Cleaned up \(ByteSize.format(report.total))" : "Cleanup finished"
+        return report.total > 0 ? String(localized: "Cleaned up \(ByteSize.format(report.total))") : String(localized: "Cleanup finished")
     }
 
     private func reportMessage(_ report: CleanupSummary) -> String {
         var lines = [String]()
-        if report.freed > 0 { lines.append("\(ByteSize.format(report.freed)) freed.") }
-        if report.trashed > 0 { lines.append("\(ByteSize.format(report.trashed)) moved to the Trash. Empty it to free that space.") }
+        if report.freed > 0 { lines.append(String(localized: "\(ByteSize.format(report.freed)) freed.")) }
+        if report.trashed > 0 { lines.append(String(localized: "\(ByteSize.format(report.trashed)) moved to the Trash. Empty it to free that space.")) }
         if !report.failures.isEmpty {
-            lines.append("\n\(report.failures.count) items couldn't be removed:")
+            lines.append("\n" + String(localized: "\(report.failures.count) items couldn't be removed:"))
             lines += report.failures.prefix(5).map { "• \($0)" }
-            if report.failures.count > 5 { lines.append("…and \(report.failures.count - 5) more") }
+            if report.failures.count > 5 { lines.append(String(localized: "…and \(report.failures.count - 5) more")) }
         }
         return lines.joined(separator: "\n")
     }
@@ -128,7 +128,7 @@ private struct Sidebar: View {
                                 .tag(SidebarItem.category(scan.id))
                         }
                     } header: {
-                        Text(group.rawValue)
+                        Text(group.title)
                     }
                 }
             }

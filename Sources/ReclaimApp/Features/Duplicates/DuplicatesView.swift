@@ -118,25 +118,26 @@ struct DuplicatesView: View {
 
     private func summary(_ duplicates: DuplicatesModel) -> String {
         guard duplicates.hasScanned, !duplicates.groups.isEmpty else {
-            return duplicates.isScanning ? "Searching…" : "Compares files byte for byte"
+            return duplicates.isScanning ? String(localized: "Searching…") : String(localized: "Compares files byte for byte")
         }
-        let wasted = "\(ByteSize.format(duplicates.wastedSpace)) in duplicates"
-        guard duplicates.selectedCount > 0 else { return "\(wasted) · nothing selected" }
-        return "\(wasted) · \(countText(duplicates.selectedCount)) selected (\(ByteSize.format(duplicates.selectedSavings)))"
+        let wasted = String(localized: "\(ByteSize.format(duplicates.wastedSpace)) in duplicates")
+        guard duplicates.selectedCount > 0 else { return wasted + " · " + String(localized: "nothing selected") }
+        return wasted + " · "
+            + String(localized: "\(countText(duplicates.selectedCount)) selected (\(ByteSize.format(duplicates.selectedSavings)))")
     }
 
     private func countText(_ count: Int) -> String {
-        count == 1 ? "1 duplicate" : "\(count) duplicates"
+        count == 1 ? String(localized: "1 duplicate") : String(localized: "\(count) duplicates")
     }
 
     private func progressText(_ progress: DuplicateScanProgress) -> String {
         switch progress.phase {
         case .searching:
-            "Looking at files… \(progress.filesExamined.formatted())"
+            String(localized: "Looking at files… \(progress.filesExamined.formatted())")
         case .comparing:
-            "Comparing \(progress.filesTotal.formatted()) files with matching sizes…"
+            String(localized: "Comparing \(progress.filesTotal.formatted()) files with matching sizes…")
         case .verifying:
-            "Checking contents: \(ByteSize.format(progress.bytesHashed)) of \(ByteSize.format(progress.bytesToHash))"
+            String(localized: "Checking contents: \(ByteSize.format(progress.bytesHashed)) of \(ByteSize.format(progress.bytesToHash))")
         }
     }
 }
@@ -224,7 +225,7 @@ private struct DuplicatesControls: View {
 
     private func title(for root: URL) -> String {
         if let volume = model.volumes.first(where: { $0.url.normalizedPath == root.normalizedPath }) { return volume.name }
-        if root.normalizedPath == FileManager.default.homeDirectoryForCurrentUser.normalizedPath { return "Home" }
+        if root.normalizedPath == FileManager.default.homeDirectoryForCurrentUser.normalizedPath { return String(localized: "Home") }
         return root.lastPathComponent
     }
 }
@@ -252,7 +253,7 @@ private struct RootChip: View {
         .padding(.vertical, 4)
         .background(.quaternary.opacity(0.6), in: Capsule())
         .opacity(isAvailable ? 1 : 0.5)
-        .help(isAvailable ? path : "\(path) isn't available and will be skipped")
+        .help(isAvailable ? path : String(localized: "\(path) isn't available and will be skipped"))
     }
 }
 
@@ -306,8 +307,8 @@ private struct DuplicateGroupRow: View {
 
     private func subtitle(kept: DuplicateFile) -> String {
         let selected = duplicates.selection.selectedFiles(in: group).count
-        let keeping = selected > 0 ? " · keeping the one in \(kept.folder.abbreviatedPath)" : " · keeping all"
-        return "\(group.files.count) copies of \(ByteSize.format(group.size))" + keeping
+        let keeping = selected > 0 ? String(localized: "keeping the one in \(kept.folder.abbreviatedPath)") : String(localized: "keeping all")
+        return String(localized: "\(group.files.count) copies of \(ByteSize.format(group.size))") + " · " + keeping
     }
 }
 

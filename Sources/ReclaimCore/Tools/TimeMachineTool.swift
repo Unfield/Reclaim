@@ -13,8 +13,8 @@ public struct LocalSnapshot: Identifiable, Sendable, Hashable {
 /// Removes Time Machine local snapshots on the startup volume.
 public struct TimeMachineTool: MaintenanceTool {
     public let id = "time-machine"
-    public let name = "Time Machine Snapshots"
-    public let summary = "Local snapshots Time Machine keeps on this Mac between backups."
+    public let name = String(localized: "Time Machine Snapshots")
+    public let summary = String(localized: "Local snapshots Time Machine keeps on this Mac between backups.")
     public let safety = SafetyLevel.review
     public let options: [ToolOption] = []
 
@@ -43,7 +43,7 @@ public struct TimeMachineTool: MaintenanceTool {
             return ToolStatus(
                 availability: .ready,
                 entries: entries,
-                note: "macOS doesn't report snapshot sizes. They count as purgeable space and are removed automatically when space runs low."
+                note: String(localized: "macOS doesn't report snapshot sizes. They count as purgeable space and are removed automatically when space runs low.")
             )
         } catch {
             return ToolStatus(availability: .unavailable(error.localizedDescription))
@@ -62,7 +62,7 @@ public struct TimeMachineTool: MaintenanceTool {
         var result = try await Shell.run("tmutil", arguments, timeout: 600)
         if !result.succeeded && allowAdministrator {
             result = try await Shell.runAsAdministrator(
-                "tmutil", arguments, prompt: "Reclaim needs your password to delete Time Machine snapshots."
+                "tmutil", arguments, prompt: String(localized: "Reclaim needs your password to delete Time Machine snapshots.")
             )
         }
         guard result.succeeded else {

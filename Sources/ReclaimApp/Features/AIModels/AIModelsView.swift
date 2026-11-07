@@ -103,7 +103,7 @@ struct AIModelsView: View {
                     }
                     .width(min: 120, ideal: 140, max: 180)
                     TableColumn("Last Used", value: \.sortDate) { item in
-                        Text(item.lastUsed?.shortDate ?? "Unknown")
+                        Text(item.lastUsed?.shortDate ?? String(localized: "Unknown"))
                             .foregroundStyle(.secondary)
                     }
                     .width(110)
@@ -181,14 +181,14 @@ struct AIModelsView: View {
 
     private func detail(for item: AIModel) -> String? {
         var parts = [String]()
-        if item.kind == .dataset { parts.append("Dataset") }
-        if item.sharedSize > 0 { parts.append("\(ByteSize.format(item.sharedSize)) shared with other models") }
+        if item.kind == .dataset { parts.append(String(localized: "Dataset")) }
+        if item.sharedSize > 0 { parts.append(String(localized: "\(ByteSize.format(item.sharedSize)) shared with other models")) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var removalTitle: String {
         guard let chosen = pendingRemoval else { return "" }
-        return chosen.count == 1 ? "Remove \(chosen[0].name)?" : "Remove \(chosen.count) models?"
+        return chosen.count == 1 ? String(localized: "Remove \(chosen[0].name)?") : String(localized: "Remove \(chosen.count) models?")
     }
 
     private func removalMessage(_ chosen: [AIModel]) -> String {
@@ -198,17 +198,17 @@ struct AIModelsView: View {
         var lines = [String]()
         if !trashed.isEmpty {
             let size = ByteSize.format(trashed.reduce(0) { $0 + $1.reclaimableSize })
-            lines.append("\(size) will be moved to the Trash. You can put it back from Recently Removed.")
+            lines.append(String(localized: "\(size) will be moved to the Trash. You can put it back from Recently Removed."))
         }
         if !permanent.isEmpty {
             let size = ByteSize.format(permanent.reduce(0) { $0 + $1.reclaimableSize })
-            let names = permanent.count == 1 ? permanent[0].name : "\(permanent.count) Ollama models"
-            lines.append("\(names) (\(size)) will be removed with Ollama's own `ollama rm` command. This can't be undone.")
+            let names = permanent.count == 1 ? permanent[0].name : String(localized: "\(permanent.count) Ollama models")
+            lines.append(String(localized: "\(names) (\(size)) will be removed with Ollama's own `ollama rm` command. This can't be undone."))
         }
         if chosen.contains(where: { $0.sharedSize > 0 }) {
-            lines.append("Files shared with other Ollama models are kept.")
+            lines.append(String(localized: "Files shared with other Ollama models are kept."))
         }
-        lines.append("You'll need to download a model again to use it.")
+        lines.append(String(localized: "You'll need to download a model again to use it."))
         return lines.joined(separator: "\n\n")
     }
 }

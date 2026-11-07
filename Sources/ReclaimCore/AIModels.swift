@@ -328,12 +328,12 @@ public enum AIModelRemovalError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .outsideModelFolder(let url): "Refusing to remove \(url.abbreviatedPath): it isn't in a known model folder."
-        case .excluded(let url): "Skipped \(url.abbreviatedPath): it's on your exclusion list."
-        case .symbolicLink(let url): "Skipped \(url.abbreviatedPath): it's a symbolic link."
-        case .missing(let url): "\(url.abbreviatedPath) no longer exists."
+        case .outsideModelFolder(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): it isn't in a known model folder.")
+        case .excluded(let url): String(localized: "Skipped \(url.abbreviatedPath): it's on your exclusion list.")
+        case .symbolicLink(let url): String(localized: "Skipped \(url.abbreviatedPath): it's a symbolic link.")
+        case .missing(let url): String(localized: "\(url.abbreviatedPath) no longer exists.")
         case .unreadableOllamaManifests(let count):
-            "\(count) Ollama models couldn't be read, so Reclaim can't tell which files are shared. Remove it with `ollama rm` instead."
+            String(localized: "\(count) Ollama models couldn't be read, so Reclaim can't tell which files are shared. Remove it with `ollama rm` instead.")
         }
     }
 }
@@ -467,7 +467,7 @@ public struct AIModelRemover: Sendable {
                 try validateOllamaBlob(url)
                 report.trashed.append(try trash(url, FileWalker.measure(url).bytes))
             } catch {
-                report.warnings.append("Couldn't remove Ollama file \(name): \(error.localizedDescription)")
+                report.warnings.append(String(localized: "Couldn't remove Ollama file \(name): \(error.localizedDescription)"))
             }
         }
     }

@@ -215,7 +215,7 @@ struct OrphansView: View {
         switch row {
         case .group(let group):
             if group.hasUnmeasuredLocations && group.locations.allSatisfy({ $0.size == nil }) {
-                SizeText(bytes: nil, placeholder: "Unknown")
+                SizeText(bytes: nil, placeholder: String(localized: "Unknown"))
                     .foregroundStyle(.secondary)
                     .help("App containers aren't measured until you select them or choose Measure.")
             } else if group.hasUnmeasuredLocations {
@@ -268,14 +268,15 @@ struct OrphansView: View {
     private var confirmationTitle: String {
         let groups = orphans.selectedGroups
         return groups.count == 1
-            ? "Move leftovers of \(groups[0].name) to the Trash?"
-            : "Move leftovers of \(groups.count) apps to the Trash?"
+            ? String(localized: "Move leftovers of \(groups[0].name) to the Trash?")
+            : String(localized: "Move leftovers of \(groups.count) apps to the Trash?")
     }
 
     private var confirmationMessage: String {
         let count = orphans.selectedLocations.count
-        let items = count == 1 ? "1 item" : "\(count) items"
-        return "\(items), \(ByteSize.format(orphans.selectedSize)). Settings and data in them will be gone if you reinstall the app. You can put them back from Recently Removed."
+        let items = count == 1 ? String(localized: "1 item") : String(localized: "\(count) items")
+        return String(localized: "\(items), \(ByteSize.format(orphans.selectedSize)).") + " "
+            + String(localized: "Settings and data in them will be gone if you reinstall the app. You can put them back from Recently Removed.")
     }
 }
 

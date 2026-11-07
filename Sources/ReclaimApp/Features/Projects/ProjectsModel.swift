@@ -10,6 +10,13 @@ final class ProjectsModel {
     enum Filter: String, CaseIterable {
         case inactive = "Inactive"
         case all = "All Projects"
+
+        var title: String {
+            switch self {
+            case .inactive: String(localized: "Inactive")
+            case .all: String(localized: "All Projects")
+            }
+        }
     }
 
     private enum Keys {
@@ -194,8 +201,8 @@ final class ProjectsModel {
         if !result.failures.isEmpty {
             let alert = NSAlert()
             alert.messageText = result.failures.count == 1
-                ? "1 folder couldn't be moved to the Trash"
-                : "\(result.failures.count) folders couldn't be moved to the Trash"
+                ? String(localized: "1 folder couldn't be moved to the Trash")
+                : String(localized: "\(result.failures.count) folders couldn't be moved to the Trash")
             alert.informativeText = result.failures.prefix(5).map(\.message).joined(separator: "\n")
             alert.runModal()
         }

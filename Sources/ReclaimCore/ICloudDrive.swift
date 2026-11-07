@@ -279,22 +279,20 @@ public enum ICloudEvictionError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .outsideICloud(let url):
-            "Skipped \(url.lastPathComponent): it isn't inside iCloud Drive."
+            String(localized: "Skipped \(url.lastPathComponent): it isn't inside iCloud Drive.")
         case .excluded(let url):
-            "Skipped \(url.lastPathComponent): it's on your exclusion list."
+            String(localized: "Skipped \(url.lastPathComponent): it's on your exclusion list.")
         case .unreadable(let url):
-            "Skipped \(url.lastPathComponent): it couldn't be read."
+            String(localized: "Skipped \(url.lastPathComponent): it couldn't be read.")
         case .notEligible(let url, let reason):
-            "Skipped \(url.lastPathComponent): " + {
-                switch reason {
-                case .notInICloud: "it isn't stored in iCloud."
-                case .symbolicLink: "it's a symbolic link."
-                case .notDownloaded: "it's already only in iCloud."
-                case .notUploaded, .uploading: "it hasn't finished uploading to iCloud."
-                case .usedRecently, .unknownLastUse: "it was opened recently."
-                case .empty: "it doesn't use any space."
-                }
-            }()
+            switch reason {
+            case .notInICloud: String(localized: "Skipped \(url.lastPathComponent): it isn't stored in iCloud.")
+            case .symbolicLink: String(localized: "Skipped \(url.lastPathComponent): it's a symbolic link.")
+            case .notDownloaded: String(localized: "Skipped \(url.lastPathComponent): it's already only in iCloud.")
+            case .notUploaded, .uploading: String(localized: "Skipped \(url.lastPathComponent): it hasn't finished uploading to iCloud.")
+            case .usedRecently, .unknownLastUse: String(localized: "Skipped \(url.lastPathComponent): it was opened recently.")
+            case .empty: String(localized: "Skipped \(url.lastPathComponent): it doesn't use any space.")
+            }
         }
     }
 }

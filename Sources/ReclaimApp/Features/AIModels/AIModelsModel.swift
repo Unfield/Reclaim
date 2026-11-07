@@ -100,8 +100,10 @@ final class AIModelsModel {
         var summary = CleanupSummary()
         summary.freed = report.deletedBytes
         summary.trashed = report.trashedBytes
-        summary.failures = report.failures.map { "\($0.model.name): \($0.message)" } + report.warnings
-        let title = report.removed.count == 1 ? "Removed \(report.removed[0].name)" : "Removed \(report.removed.count) AI models"
+        summary.failures = report.failures.map { String(localized: "\($0.model.name): \($0.message)") } + report.warnings
+        let title = report.removed.count == 1
+            ? String(localized: "Removed \(report.removed[0].name)")
+            : String(localized: "Removed \(report.removed.count) AI models")
         summary.undoBatchID = appModel.recordTrash(title: title, records: report.trashed)
         appModel.lastReport = summary
         appModel.didRemoveFiles()

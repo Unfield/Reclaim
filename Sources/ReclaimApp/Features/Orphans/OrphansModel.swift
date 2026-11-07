@@ -111,7 +111,9 @@ final class OrphansModel {
             OrphanFinder().remove(locations, method: .moveToTrash)
         }.value
 
-        let title = names.count == 1 ? "Removed leftovers of \(names[0])" : "Removed leftovers of \(names.count) apps"
+        let title = names.count == 1
+            ? String(localized: "Removed leftovers of \(names[0])")
+            : String(localized: "Removed leftovers of \(names.count) apps")
         app.recordTrash(title: title, records: report.trashed)
         app.didRemoveFiles()
 
@@ -122,6 +124,6 @@ final class OrphansModel {
             group.locations.removeAll { removed.contains($0.url) }
             return group.locations.isEmpty ? nil : group
         }
-        removalFailures = report.failures.map { "\($0.item.url.abbreviatedPath): \($0.message)" }
+        removalFailures = report.failures.map { String(localized: "\($0.item.url.abbreviatedPath): \($0.message)") }
     }
 }

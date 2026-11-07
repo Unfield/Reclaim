@@ -53,43 +53,43 @@ public struct ProjectJunkKind: Sendable, Hashable, Identifiable {
 
     /// Every known kind. Order matters where folder names are shared (`build`): the first match wins.
     public static let all: [ProjectJunkKind] = [
-        .init(id: "node-modules", folderNames: ["node_modules"], name: "Node packages", ecosystem: .javaScript,
+        .init(id: "node-modules", folderNames: ["node_modules"], name: String(localized: "Node packages"), ecosystem: .javaScript,
               safety: .review, rebuildHint: "npm install", marker: packageJSON),
-        .init(id: "next", folderNames: [".next"], name: "Next.js build", ecosystem: .javaScript,
+        .init(id: "next", folderNames: [".next"], name: String(localized: "Next.js build"), ecosystem: .javaScript,
               safety: .safe, rebuildHint: "npm run build", marker: packageJSON),
-        .init(id: "nuxt", folderNames: [".nuxt"], name: "Nuxt build", ecosystem: .javaScript,
+        .init(id: "nuxt", folderNames: [".nuxt"], name: String(localized: "Nuxt build"), ecosystem: .javaScript,
               safety: .safe, rebuildHint: "npm run build", marker: packageJSON),
-        .init(id: "svelte-kit", folderNames: [".svelte-kit"], name: "SvelteKit build", ecosystem: .javaScript,
+        .init(id: "svelte-kit", folderNames: [".svelte-kit"], name: String(localized: "SvelteKit build"), ecosystem: .javaScript,
               safety: .safe, rebuildHint: "npm run build", marker: packageJSON),
-        .init(id: "turbo", folderNames: [".turbo"], name: "Turborepo cache", ecosystem: .javaScript,
+        .init(id: "turbo", folderNames: [".turbo"], name: String(localized: "Turborepo cache"), ecosystem: .javaScript,
               safety: .safe, rebuildHint: "npm run build", marker: packageJSON),
-        .init(id: "parcel-cache", folderNames: [".parcel-cache"], name: "Parcel cache", ecosystem: .javaScript,
+        .init(id: "parcel-cache", folderNames: [".parcel-cache"], name: String(localized: "Parcel cache"), ecosystem: .javaScript,
               safety: .safe, rebuildHint: "npm run build", marker: packageJSON),
-        .init(id: "angular", folderNames: [".angular"], name: "Angular cache", ecosystem: .javaScript,
+        .init(id: "angular", folderNames: [".angular"], name: String(localized: "Angular cache"), ecosystem: .javaScript,
               safety: .safe, rebuildHint: "npm run build", marker: packageJSON),
-        .init(id: "cargo-target", folderNames: ["target"], name: "Cargo build", ecosystem: .rust,
+        .init(id: "cargo-target", folderNames: ["target"], name: String(localized: "Cargo build"), ecosystem: .rust,
               safety: .safe, rebuildHint: "cargo build", marker: .sibling(["Cargo.toml"])),
-        .init(id: "python-venv", folderNames: [".venv", "venv", "env"], name: "Python environment", ecosystem: .python,
+        .init(id: "python-venv", folderNames: [".venv", "venv", "env"], name: String(localized: "Python environment"), ecosystem: .python,
               safety: .review, rebuildHint: "python3 -m venv .venv", marker: .contains("pyvenv.cfg")),
-        .init(id: "swift-build", folderNames: [".build"], name: "Swift build", ecosystem: .swift,
+        .init(id: "swift-build", folderNames: [".build"], name: String(localized: "Swift build"), ecosystem: .swift,
               safety: .safe, rebuildHint: "swift build", marker: .sibling(["Package.swift"])),
-        .init(id: "gradle-build", folderNames: ["build"], name: "Gradle build", ecosystem: .gradle,
+        .init(id: "gradle-build", folderNames: ["build"], name: String(localized: "Gradle build"), ecosystem: .gradle,
               safety: .safe, rebuildHint: "gradle build", marker: gradleFiles),
-        .init(id: "gradle-cache", folderNames: [".gradle"], name: "Gradle cache", ecosystem: .gradle,
+        .init(id: "gradle-cache", folderNames: [".gradle"], name: String(localized: "Gradle cache"), ecosystem: .gradle,
               safety: .safe, rebuildHint: "gradle build", marker: gradleFiles),
         .init(id: "cocoapods", folderNames: ["Pods"], name: "CocoaPods", ecosystem: .cocoaPods,
               safety: .review, rebuildHint: "pod install", marker: .sibling(["Podfile"])),
-        .init(id: "dart-tool", folderNames: [".dart_tool"], name: "Dart tool cache", ecosystem: .dart,
+        .init(id: "dart-tool", folderNames: [".dart_tool"], name: String(localized: "Dart tool cache"), ecosystem: .dart,
               safety: .safe, rebuildHint: "dart pub get", marker: .sibling(["pubspec.yaml"])),
-        .init(id: "flutter-build", folderNames: ["build"], name: "Flutter build", ecosystem: .dart,
+        .init(id: "flutter-build", folderNames: ["build"], name: String(localized: "Flutter build"), ecosystem: .dart,
               safety: .safe, rebuildHint: "flutter build", marker: .sibling(["pubspec.yaml"])),
-        .init(id: "zig-cache", folderNames: [".zig-cache", "zig-cache"], name: "Zig cache", ecosystem: .zig,
+        .init(id: "zig-cache", folderNames: [".zig-cache", "zig-cache"], name: String(localized: "Zig cache"), ecosystem: .zig,
               safety: .safe, rebuildHint: "zig build", marker: .sibling(["build.zig"])),
-        .init(id: "mix-build", folderNames: ["_build"], name: "Mix build", ecosystem: .elixir,
+        .init(id: "mix-build", folderNames: ["_build"], name: String(localized: "Mix build"), ecosystem: .elixir,
               safety: .safe, rebuildHint: "mix compile", marker: .sibling(["mix.exs"])),
-        .init(id: "mix-deps", folderNames: ["deps"], name: "Mix dependencies", ecosystem: .elixir,
+        .init(id: "mix-deps", folderNames: ["deps"], name: String(localized: "Mix dependencies"), ecosystem: .elixir,
               safety: .review, rebuildHint: "mix deps.get", marker: .sibling(["mix.exs"])),
-        .init(id: "terraform", folderNames: [".terraform"], name: "Terraform providers", ecosystem: .terraform,
+        .init(id: "terraform", folderNames: [".terraform"], name: String(localized: "Terraform providers"), ecosystem: .terraform,
               safety: .review, rebuildHint: "terraform init", marker: .siblingExtension("tf")),
     ]
 
@@ -416,15 +416,15 @@ public enum ProjectJunkError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .notJunk(let url): "Refusing to remove \(url.abbreviatedPath): it isn't a known build or dependency folder."
-        case .missing(let url): "\(url.abbreviatedPath) no longer exists."
-        case .notADirectory(let url): "Refusing to remove \(url.abbreviatedPath): it isn't a folder."
-        case .symbolicLink(let url): "Refusing to remove \(url.abbreviatedPath): it's a symbolic link."
-        case .missingMarker(let url): "Refusing to remove \(url.abbreviatedPath): its project file is missing."
-        case .outsideRoots(let url): "Refusing to remove \(url.abbreviatedPath): it isn't inside a searched folder."
-        case .protectedLocation(let url): "Refusing to remove \(url.abbreviatedPath): it's part of macOS."
-        case .excluded(let url): "Skipped \(url.abbreviatedPath): it's on your exclusion list."
-        case .changedSinceScan(let url): "Skipped \(url.abbreviatedPath): it changed since the scan. Scan again."
+        case .notJunk(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): it isn't a known build or dependency folder.")
+        case .missing(let url): String(localized: "\(url.abbreviatedPath) no longer exists.")
+        case .notADirectory(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): it isn't a folder.")
+        case .symbolicLink(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): it's a symbolic link.")
+        case .missingMarker(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): its project file is missing.")
+        case .outsideRoots(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): it isn't inside a searched folder.")
+        case .protectedLocation(let url): String(localized: "Refusing to remove \(url.abbreviatedPath): it's part of macOS.")
+        case .excluded(let url): String(localized: "Skipped \(url.abbreviatedPath): it's on your exclusion list.")
+        case .changedSinceScan(let url): String(localized: "Skipped \(url.abbreviatedPath): it changed since the scan. Scan again.")
         }
     }
 }
@@ -518,8 +518,8 @@ public struct ProjectJunkCleaner: Sendable {
         /// A title for the undo history, e.g. "Cleaned 12 projects".
         public var undoTitle: String {
             let projects = Set(removed.map(\.project.normalizedPath))
-            if projects.count == 1, let project = removed.first?.projectName { return "Cleaned \(project)" }
-            return "Cleaned \(projects.count) projects"
+            if projects.count == 1, let project = removed.first?.projectName { return String(localized: "Cleaned \(project)") }
+            return String(localized: "Cleaned \(projects.count) projects")
         }
     }
 

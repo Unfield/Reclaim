@@ -171,14 +171,14 @@ public struct AppUninstaller: Sendable {
 
     public func validate(_ app: InstalledApp) throws {
         guard app.url.pathExtension == "app" else {
-            throw UninstallError.notAllowed("\(app.name) isn't an app bundle.")
+            throw UninstallError.notAllowed(String(localized: "\(app.name) isn't an app bundle."))
         }
         guard !app.isAppleApp else {
-            throw UninstallError.notAllowed("\(app.name) is part of macOS and can't be removed.")
+            throw UninstallError.notAllowed(String(localized: "\(app.name) is part of macOS and can't be removed."))
         }
         let path = app.url.normalizedPath
         guard inventory.roots.contains(where: { path.hasPrefix($0.normalizedPath + "/") }) else {
-            throw UninstallError.notAllowed("\(app.name) isn't in an Applications folder.")
+            throw UninstallError.notAllowed(String(localized: "\(app.name) isn't in an Applications folder."))
         }
     }
 
@@ -209,7 +209,7 @@ public struct AppUninstaller: Sendable {
         for item in leftovers {
             do {
                 guard allowed.contains(item.url.normalizedPath) else {
-                    throw UninstallError.notAllowed("\(item.url.abbreviatedPath) isn't a recognized support file for \(app.name).")
+                    throw UninstallError.notAllowed(String(localized: "\(item.url.abbreviatedPath) isn't a recognized support file for \(app.name)."))
                 }
                 if let record = try remove(item.url, size: item.size, method: method) { report.trashed.append(record) }
                 report.removed.append(item)
@@ -232,7 +232,7 @@ public struct AppUninstaller: Sendable {
         let result = try await Shell.runAsAdministrator(
             "/bin/mv",
             [app.url.path(percentEncoded: false), destination.path(percentEncoded: false)],
-            prompt: "Reclaim needs your password to move \(app.name) to the Trash."
+            prompt: String(localized: "Reclaim needs your password to move \(app.name) to the Trash.")
         )
         guard result.succeeded else { throw ShellError.failed(command: "mv", message: result.failureMessage) }
     }

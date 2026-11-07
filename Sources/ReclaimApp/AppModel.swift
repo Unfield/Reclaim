@@ -184,7 +184,7 @@ final class AppModel {
             }.value
             if let error {
                 let alert = NSAlert()
-                alert.messageText = "Couldn't eject \(volume.name)"
+                alert.messageText = String(localized: "Couldn't eject \(volume.name)")
                 alert.informativeText = error
                 alert.runModal()
             }
@@ -197,8 +197,8 @@ final class AppModel {
         if isLowOnSpace {
             guard !lowSpaceNotified, Prefs.bool(Prefs.lowSpaceNotifications) else { return }
             lowSpaceNotified = true
-            let body = "Only \(ByteSize.format(volume.availableForImportantUsage)) is available on \(volume.name). Open Reclaim to free up space."
-            Task { await Notifier.post(title: "Your disk is almost full", body: body) }
+            let body = String(localized: "Only \(ByteSize.format(volume.availableForImportantUsage)) is available on \(volume.name). Open Reclaim to free up space.")
+            Task { await Notifier.post(title: String(localized: "Your disk is almost full"), body: body) }
         } else {
             lowSpaceNotified = false
         }
@@ -430,12 +430,12 @@ final class AppModel {
             } else {
                 summary.trashed += report.bytesFreed
             }
-            summary.failures += report.failures.map { "\($0.item.name): \($0.message)" }
+            summary.failures += report.failures.map { String(localized: "\($0.item.name): \($0.message)") }
             trashed += report.trashed
         }
         if !trashed.isEmpty {
             let names = categories.map(\.0.name)
-            let title = names.count == 1 ? names[0] : "Cleanup of \(names.count) categories"
+            let title = names.count == 1 ? names[0] : String(localized: "Cleanup of \(names.count) categories")
             summary.undoBatchID = recordTrash(title: title, records: trashed)
         }
 
@@ -448,7 +448,7 @@ final class AppModel {
                 summary.freed += result.freed ?? estimate ?? 0
                 toolStates[id]?.error = nil
             } catch {
-                summary.failures.append("\(tool.name): \(error.localizedDescription)")
+                summary.failures.append(String(localized: "\(tool.name): \(error.localizedDescription)"))
                 toolStates[id]?.error = error.localizedDescription
             }
             toolStates[id]?.isCleaning = false
@@ -480,7 +480,7 @@ final class AppModel {
             try AppUninstaller().validate(app)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Can't uninstall \(app.name)"
+            alert.messageText = String(localized: "Can't uninstall \(app.name)")
             alert.informativeText = error.localizedDescription
             alert.runModal()
             return
@@ -518,7 +518,7 @@ final class AppModel {
         if report.removed.contains(where: { $0.url == app.url }) {
             apps.removeAll { $0.url == app.url }
         }
-        recordTrash(title: "Uninstalled \(app.name)", records: report.trashed)
+        recordTrash(title: String(localized: "Uninstalled \(app.name)"), records: report.trashed)
         updateVolume()
         return report
     }
@@ -533,7 +533,7 @@ final class AppModel {
         }.value
         report.removed.insert(CleanupItem(url: app.url, size: app.size, modified: app.lastUsed), at: 0)
         // The app itself was moved as root, so only its support files can be put back automatically.
-        recordTrash(title: "Support files of \(app.name)", records: report.trashed)
+        recordTrash(title: String(localized: "Support files of \(app.name)"), records: report.trashed)
         updateVolume()
         return report
     }
@@ -555,7 +555,7 @@ final class AppModel {
     /// Moves one item to the Trash as its own undoable batch.
     func moveToTrash(_ url: URL, size: Int64, title: String? = nil) throws {
         let record = try Trash.move(url, size: size)
-        recordTrash(title: title ?? "Moved \(url.lastPathComponent) to the Trash", records: [record])
+        recordTrash(title: title ?? String(localized: "Moved \(url.lastPathComponent) to the Trash"), records: [record])
         didRemoveFiles()
     }
 
@@ -571,8 +571,8 @@ final class AppModel {
         refreshTrashHistory()
         if !result.failures.isEmpty {
             let alert = NSAlert()
-            alert.messageText = "\(result.failures.count) items couldn't be put back"
-            alert.informativeText = result.failures.prefix(5).map { "\($0.record.name): \($0.message)" }.joined(separator: "\n")
+            alert.messageText = String(localized: "\(result.failures.count) items couldn't be put back")
+            alert.informativeText = result.failures.prefix(5).map { String(localized: "\($0.record.name): \($0.message)") }.joined(separator: "\n")
             alert.runModal()
         }
         updateVolume()
@@ -718,7 +718,7 @@ final class AppModel {
         defer { isPurging = false }
         do {
             let freed = try await MemoryMonitor.purge(allowAdministrator: true)
-            purgeMessage = "Cleared memory caches. \(ByteSize.formatMemory(freed)) more is available right now."
+            purgeMessage = String(localized: "Cleared memory caches. \(ByteSize.formatMemory(freed)) more is available right now.")
         } catch {
             purgeMessage = error.localizedDescription
         }
@@ -761,7 +761,7 @@ final class AppModel {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.directoryURL = url
-        panel.prompt = "Choose"
+        panel.prompt = String(localized: "Choose")
         return panel.runModal() == .OK ? panel.url : nil
     }
 

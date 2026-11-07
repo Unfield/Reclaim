@@ -29,6 +29,7 @@ Reclaim deletes files, so safety comes first:
 
 - **A file category:** add it to `CategoryCatalog.all(home:oldDownloadsDays:)` in `Sources/ReclaimCore/CategoryCatalog.swift`. Then give it an SF Symbol in `CleanupCategory.symbolName` and a chart colour in `ChartPalette`, both in `Sources/ReclaimApp/Views/Components.swift`.
 - **A maintenance tool:** conform to `MaintenanceTool` (see `Sources/ReclaimCore/Tools/`) and register it in `ToolCatalog.all()`. Put output parsing in `static` functions and add tests with sample output.
+- **User-facing text:** the app is translated (English and German, in `Localization/*.lproj`). SwiftUI literals like `Text("…")` are localized automatically; text built as a `String` (alerts, notifications, computed messages, anything in `ReclaimCore`) needs `String(localized: "…")`. Write whole sentences rather than gluing fragments together. Then add the German translation to `Localization/de.lproj/Localizable.strings` (or `.stringsdict` if it depends on a count) and run `./scripts/check-localization.py`, which lists missing keys and mismatched format specifiers. The CLI stays English.
 
 ## Pull requests
 

@@ -3,21 +3,21 @@ import Foundation
 /// Removes unavailable Xcode simulators and old simulator runtimes via `xcrun simctl`.
 public struct XcodeSimulatorsTool: MaintenanceTool {
     public let id = "xcode-simulators"
-    public let name = "Xcode Simulators"
-    public let summary = "Simulators for iOS versions you no longer have, and old simulator runtimes."
+    public let name = String(localized: "Xcode Simulators")
+    public let summary = String(localized: "Simulators for iOS versions you no longer have, and old simulator runtimes.")
     public let safety = SafetyLevel.review
     public let options = [
         ToolOption(
             id: "runtimes",
-            title: "Old simulator runtimes",
-            detail: "Deletes runtimes that no simulator uses or that are older than the newest one for their platform. Simulators using them are removed too. Xcode can download them again (several GB each).",
+            title: String(localized: "Old simulator runtimes"),
+            detail: String(localized: "Deletes runtimes that no simulator uses or that are older than the newest one for their platform. Simulators using them are removed too. Xcode can download them again (several GB each)."),
             isEnabledByDefault: false,
             safety: .review
         ),
         ToolOption(
             id: "erase-all",
-            title: "Erase all simulators",
-            detail: "Shuts down every simulator and erases its apps, data and settings. The simulators themselves are kept.",
+            title: String(localized: "Erase all simulators"),
+            detail: String(localized: "Shuts down every simulator and erases its apps, data and settings. The simulators themselves are kept."),
             isEnabledByDefault: false,
             safety: .caution
         ),
@@ -59,7 +59,7 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
         let unavailable = devices.filter { !$0.isAvailable }
         if !unavailable.isEmpty {
             entries.append(ToolEntry(
-                title: "Unavailable simulators",
+                title: String(localized: "Unavailable simulators"),
                 detail: Self.describe(unavailable),
                 size: totalSize(of: unavailable.flatMap(\.paths))
             ))
@@ -70,7 +70,7 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
             if !unused.isEmpty {
                 let sizes = unused.compactMap(\.sizeBytes)
                 entries.append(ToolEntry(
-                    title: "Unused simulator runtimes",
+                    title: String(localized: "Unused simulator runtimes"),
                     detail: unused.map(\.displayName).joined(separator: ", "),
                     size: sizes.isEmpty ? nil : sizes.reduce(0, +),
                     optionID: "runtimes"
@@ -82,8 +82,8 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
         if !available.isEmpty {
             let count = available.count
             entries.append(ToolEntry(
-                title: "Simulator data",
-                detail: "Apps and data in \(count) \(count == 1 ? "simulator" : "simulators")",
+                title: String(localized: "Simulator data"),
+                detail: count == 1 ? String(localized: "Apps and data in 1 simulator") : String(localized: "Apps and data in \(count) simulators"),
                 size: totalSize(of: available.compactMap(\.dataPath)),
                 optionID: "erase-all"
             ))
@@ -92,7 +92,7 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
         return ToolStatus(
             availability: .ready,
             entries: entries,
-            note: "Unavailable simulators belong to runtimes or device types that are no longer installed."
+            note: String(localized: "Unavailable simulators belong to runtimes or device types that are no longer installed.")
         )
     }
 
@@ -161,7 +161,7 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
             throw ShellError.failed(command: "xcrun simctl list devices", message: result.failureMessage)
         }
         guard let devices = Self.parseDevices(result.output) else {
-            throw ShellError.failed(command: "xcrun simctl list devices", message: "Unexpected output.")
+            throw ShellError.failed(command: "xcrun simctl list devices", message: String(localized: "Unexpected output."))
         }
         return devices
     }
@@ -299,8 +299,8 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
             platformName(fromRuntimeIdentifier: device.runtimeIdentifier).map { "\(device.name) (\($0))" } ?? device.name
         }
         let count = devices.count
-        let prefix = "\(count) \(count == 1 ? "device" : "devices"): "
-        return prefix + names.joined(separator: ", ") + (count > 3 ? ", …" : "")
+        let list = names.joined(separator: ", ") + (count > 3 ? ", …" : "")
+        return count == 1 ? String(localized: "1 device: \(list)") : String(localized: "\(count) devices: \(list)")
     }
 
     /// `com.apple.CoreSimulator.SimRuntime.iOS-17-0` → "iOS 17.0", `…SimRuntime.xrOS-1-0` → "visionOS 1.0".

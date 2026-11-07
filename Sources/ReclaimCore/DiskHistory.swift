@@ -517,19 +517,28 @@ public struct CleanupSchedule: Sendable, Hashable {
 public enum DiskHistoryFormat {
     /// "+3.2 GB", "−12.4 GB" (with a real minus sign) or "No change".
     public static func signedSize(_ bytes: Int64) -> String {
-        guard abs(bytes) >= 1_000_000 else { return "No change" }
+        guard abs(bytes) >= 1_000_000 else { return String(localized: "No change") }
         return (bytes < 0 ? "−" : "+") + ByteSize.format(abs(bytes))
     }
 
     /// "less than a day", "~5 days", "~6 weeks", "~4 months", "~2 years".
     public static func approximateDuration(days: Double) -> String {
-        func plural(_ count: Int, _ unit: String) -> String { "~\(count) \(unit)\(count == 1 ? "" : "s")" }
+        // Shown after "in" ("Full in ~6 weeks"), which matters for languages that inflect the unit.
         switch days {
-        case ..<1: return "less than a day"
-        case ..<14: return plural(Int(days.rounded()), "day")
-        case ..<60: return plural(Int((days / 7).rounded()), "week")
-        case ..<730: return plural(Int((days / 30.44).rounded()), "month")
-        default: return plural(Int((days / 365.25).rounded()), "year")
+        case ..<1:
+            return String(localized: "less than a day")
+        case ..<14:
+            let count = Int(days.rounded())
+            return count == 1 ? String(localized: "~1 day") : String(localized: "~\(count) days")
+        case ..<60:
+            let count = Int((days / 7).rounded())
+            return count == 1 ? String(localized: "~1 week") : String(localized: "~\(count) weeks")
+        case ..<730:
+            let count = Int((days / 30.44).rounded())
+            return count == 1 ? String(localized: "~1 month") : String(localized: "~\(count) months")
+        default:
+            let count = Int((days / 365.25).rounded())
+            return count == 1 ? String(localized: "~1 year") : String(localized: "~\(count) years")
         }
     }
 }

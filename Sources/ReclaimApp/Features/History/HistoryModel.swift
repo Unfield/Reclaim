@@ -27,9 +27,9 @@ enum HistoryRange: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .week: "7 Days"
-        case .month: "30 Days"
-        case .year: "1 Year"
+        case .week: String(localized: "7 Days")
+        case .month: String(localized: "30 Days")
+        case .year: String(localized: "1 Year")
         }
     }
 }
@@ -228,7 +228,7 @@ final class HistoryModel {
         setLastRun(now)
         let free = appModel.volume?.availableForImportantUsage
         guard schedule.allowsCleanup(free: free) else {
-            setLastResult("Skipped, \(ByteSize.format(free ?? 0)) was free")
+            setLastResult(String(localized: "Skipped, \(ByteSize.format(free ?? 0)) was free"))
             return
         }
 
@@ -242,26 +242,30 @@ final class HistoryModel {
             try? await Task.sleep(for: .seconds(1))
         }
         guard !appModel.isCleaning, !appModel.isScanning, appModel.lastScanDate != nil else {
-            setLastResult("Skipped, Reclaim was busy")
+            setLastResult(String(localized: "Skipped, Reclaim was busy"))
             return
         }
         // Unattended runs never empty the Trash (that's permanent) and don't pop up the result alert.
         let report = await appModel.cleanAllSafe(includingTrash: false, showReport: false)
 
         guard let report, report.total > 0 || !report.failures.isEmpty else {
-            setLastResult("Nothing needed cleaning")
+            setLastResult(String(localized: "Nothing needed cleaning"))
             return
         }
-        setLastResult(report.total > 0 ? "Cleaned up \(ByteSize.format(report.total))" : "Nothing could be removed")
+        setLastResult(report.total > 0 ? String(localized: "Cleaned up \(ByteSize.format(report.total))") : String(localized: "Nothing could be removed"))
 
-        var body = report.total > 0 ? "Reclaim cleaned up \(ByteSize.format(report.total))." : "Reclaim couldn't remove anything."
+        var body = report.total > 0
+            ? String(localized: "Reclaim cleaned up \(ByteSize.format(report.total)).")
+            : String(localized: "Reclaim couldn't remove anything.")
         if report.trashed > 0 {
-            body += " \(ByteSize.format(report.trashed)) of it is in the Trash."
+            body += " " + String(localized: "\(ByteSize.format(report.trashed)) of it is in the Trash.")
         }
         if !report.failures.isEmpty {
-            body += report.failures.count == 1 ? " 1 item couldn't be removed." : " \(report.failures.count) items couldn't be removed."
+            body += " " + (report.failures.count == 1
+                ? String(localized: "1 item couldn't be removed.")
+                : String(localized: "\(report.failures.count) items couldn't be removed."))
         }
-        await Notifier.post(title: "Scheduled cleanup", body: body, identifier: "scheduled-cleanup")
+        await Notifier.post(title: String(localized: "Scheduled cleanup"), body: body, identifier: "scheduled-cleanup")
     }
 
     private func postWeeklySummaryIfDue(_ appModel: AppModel) async {
@@ -279,7 +283,7 @@ final class HistoryModel {
         }
         guard let volume = appModel.volume else { return }
 
-        var body = "\(ByteSize.format(volume.availableForImportantUsage)) free"
+        var body = String(localized: "\(ByteSize.format(volume.availableForImportantUsage)) free")
         let weekAgo = now.addingTimeInterval(-7 * 86_400)
 
         if let first = history.volume(DiskHistory.startupKey)?.samples(since: weekAgo).first,
@@ -289,8 +293,10 @@ final class HistoryModel {
         }
         body += "."
         let safe = appModel.safeReclaimable
-        body += safe > 0 ? " \(ByteSize.format(safe)) can be cleaned safely." : " Nothing needs cleaning right now."
-        await Notifier.post(title: "Your Mac this week", body: body, identifier: "weekly-summary")
+        body += " " + (safe > 0
+            ? String(localized: "\(ByteSize.format(safe)) can be cleaned safely.")
+            : String(localized: "Nothing needs cleaning right now."))
+        await Notifier.post(title: String(localized: "Your Mac this week"), body: body, identifier: "weekly-summary")
     }
 
     private func setLastRun(_ date: Date) {

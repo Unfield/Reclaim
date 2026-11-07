@@ -103,30 +103,30 @@ struct ICloudView: View {
 
     private var removalTitle: String {
         let count = pendingRemoval?.count ?? 0
-        return count == 1 ? "Remove the download of 1 file?" : "Remove the downloads of \(fileCount(count))?"
+        return count == 1 ? String(localized: "Remove the download of 1 file?") : String(localized: "Remove the downloads of \(fileCount(count))?")
     }
 
     private var resultTitle: String {
         guard let result = model.icloud.lastResult else { return "" }
-        return result.count > 0 ? "Freed \(ByteSize.format(result.freed))" : "No downloads were removed"
+        return result.count > 0 ? String(localized: "Freed \(ByteSize.format(result.freed))") : String(localized: "No downloads were removed")
     }
 
     private func resultMessage(_ result: ICloudModel.EvictionResult) -> String {
         var lines = [String]()
         if result.count > 0 {
-            lines.append("Removed the downloads of \(fileCount(result.count)). They're still in iCloud Drive.")
+            lines.append(String(localized: "Removed the downloads of \(fileCount(result.count)). They're still in iCloud Drive."))
         }
         if !result.failures.isEmpty {
-            lines.append("\n\(fileCount(result.failures.count)) skipped:")
+            lines.append("\n" + String(localized: "\(fileCount(result.failures.count)) skipped:"))
             lines += result.failures.prefix(5).map { "• \($0)" }
-            if result.failures.count > 5 { lines.append("…and \(result.failures.count - 5) more") }
+            if result.failures.count > 5 { lines.append(String(localized: "…and \(result.failures.count - 5) more")) }
         }
         return lines.joined(separator: "\n")
     }
 }
 
 private func fileCount(_ count: Int) -> String {
-    count == 1 ? "1 file" : "\(count) files"
+    count == 1 ? String(localized: "1 file") : String(localized: "\(count) files")
 }
 
 // MARK: - Summary
@@ -264,7 +264,7 @@ private struct ICloudItemRow: View {
                 }
             }
             Spacer(minLength: 12)
-            Text(item.lastUsed.map { "Opened \($0.shortDate)" } ?? "")
+            Text(item.lastUsed.map { String(localized: "Opened \($0.shortDate)") } ?? "")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .frame(width: 150, alignment: .trailing)

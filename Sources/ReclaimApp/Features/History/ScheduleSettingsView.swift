@@ -18,13 +18,13 @@ struct ScheduleSettingsView: View {
                     Text("Every month").tag(ScheduleFrequency.monthly)
                 }
                 if history.frequency == .weekly {
-                    Picker("On", selection: $history.weekday) {
+                    Picker(Self.dayLabel, selection: $history.weekday) {
                         ForEach(Self.weekdays, id: \.number) { day in
                             Text(day.name).tag(day.number)
                         }
                     }
                 } else {
-                    LabeledContent("On") {
+                    LabeledContent(Self.dayLabel) {
                         Text(history.frequency == .monthly ? "The 1st of each month" : history.frequency == .daily ? "Every day" : "—")
                     }
                     .foregroundStyle(isOff ? .secondary : .primary)
@@ -62,18 +62,21 @@ struct ScheduleSettingsView: View {
         .formStyle(.grouped)
     }
 
+    /// "On" (as in "on Monday"), with its own key so it isn't translated like the On/Off status of login items.
+    private static let dayLabel = String(localized: "schedule.day-label", defaultValue: "On")
+
     private var lastRunText: String {
         let history = model.history
-        guard let lastRun = history.lastRun else { return "Never" }
+        guard let lastRun = history.lastRun else { return String(localized: "Never") }
         let date = lastRun.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
         return history.lastResult.map { "\(date) · \($0)" } ?? date
     }
 
     private var nextRunText: String {
         let history = model.history
-        if history.isRunningSchedule { return "Running now…" }
+        if history.isRunningSchedule { return String(localized: "Running now…") }
         guard let next = history.nextRun else { return "—" }
-        if next <= Date() { return "In a few minutes" }
+        if next <= Date() { return String(localized: "In a few minutes") }
         return next.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
     }
 

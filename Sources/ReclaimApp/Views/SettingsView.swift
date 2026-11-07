@@ -178,7 +178,7 @@ struct ExclusionsSettings: View {
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Caches")
-        panel.prompt = "Exclude"
+        panel.prompt = String(localized: "Exclude")
         guard panel.runModal() == .OK else { return }
         update { exclusions in panel.urls.forEach { exclusions.add($0) } }
     }

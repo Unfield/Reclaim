@@ -63,11 +63,11 @@ extension VolumeInfo {
 
     var kindDescription: String {
         switch kind {
-        case .startup: "Startup Disk"
-        case .internalDisk: "Internal"
-        case .external: "External"
-        case .network: "Network"
-        case .diskImage: "Disk Image"
+        case .startup: String(localized: "Startup Disk")
+        case .internalDisk: String(localized: "Internal")
+        case .external: String(localized: "External")
+        case .network: String(localized: "Network")
+        case .diskImage: String(localized: "Disk Image")
         }
     }
 
@@ -317,7 +317,7 @@ struct DiskRow: View {
                 DiskUsageBar(volume: volume, height: compact ? 5 : 8)
                 if !compact {
                     HStack {
-                        Text("\(ByteSize.format(volume.usedCapacity)) of \(ByteSize.format(volume.totalCapacity)) used" + (volume.purgeableCapacity > 0 ? " · \(ByteSize.format(volume.purgeableCapacity)) purgeable" : ""))
+                        Text(usageText)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                         Spacer()
@@ -347,6 +347,12 @@ struct DiskRow: View {
                 Button("Eject") { model.eject(volume) }
             }
         }
+    }
+
+    private var usageText: String {
+        let used = String(localized: "\(ByteSize.format(volume.usedCapacity)) of \(ByteSize.format(volume.totalCapacity)) used")
+        guard volume.purgeableCapacity > 0 else { return used }
+        return used + " · " + String(localized: "\(ByteSize.format(volume.purgeableCapacity)) purgeable")
     }
 }
 

@@ -65,7 +65,7 @@ struct ReclaimApp: App {
             }
             // Kept separate from the system Undo so ⌘Z keeps working in text fields.
             CommandGroup(after: .undoRedo) {
-                Button("Put Back “\(model.trashHistory.first?.title ?? "Last Cleanup")”") {
+                Button("Put Back “\(model.trashHistory.first?.title ?? String(localized: "Last Cleanup"))”") {
                     if let batch = model.trashHistory.first { Task { await model.putBack(batch.id) } }
                 }
                 .keyboardShortcut("z", modifiers: [.command, .option])
