@@ -1,0 +1,40 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead? Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Reclaim version
+      description: Reclaim → About Reclaim, or `reclaim --version`
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "macOS 26.1, Apple silicon"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - App
+        - Menu bar
+        - Command-line tool
+  - type: checkboxes
+    id: fda
+    attributes:
+      label: Full Disk Access
+      options:
+        - label: Reclaim (or my terminal) has Full Disk Access

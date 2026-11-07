@@ -1,0 +1,587 @@
+import AppKit
+import Observation
+import ReclaimCore
+
+enum SidebarItem: Hashable {
+    case overview
+    case category(String)
+    case tool(String)
+    case apps
+    case explorer
+    case largeFiles
+}
+
+struct ToolState {
+    var status: ToolStatus?
+    var isLoading = false
+    var isCleaning = false
+    var options: Set<String>
+    var error: String?
+}
+
+struct CleanupSummary: Identifiable {
+    let id = UUID()
+    var freed: Int64 = 0
+    var trashed: Int64 = 0
+    var failures: [String] = []
+
+    var total: Int64 { freed + trashed }
+}
+
+@MainActor
+@Observable
+final class AppModel {
+    static let shared = AppModel()
+
+    var selection: SidebarItem? = .overview
+
+    // MARK: Disks
+    var volumes: [VolumeInfo] = []
+    /// The startup disk.
+    var volume: VolumeInfo? { volumes.first(where: \.isStartup) }
+    var otherVolumes: [VolumeInfo] { volumes.filter { !$0.isStartup } }
+
+    var lowSpaceThreshold: Int64 { Int64(Prefs.int(Prefs.lowSpaceThresholdGB)) * 1_000_000_000 }
+    var isLowOnSpace: Bool {
+        guard let volume else { return false }
+        return volume.availableForImportantUsage < lowSpaceThreshold
+    }
+
+    // MARK: Categories
+    var scans: [CategoryScan] = []
+    var isScanning = false
+    var lastScanDate: Date?
+    private(set) var selectedItems: [String: Set<URL>] = [:]
+
+    // MARK: Tools
+    let tools: [any MaintenanceTool] = ToolCatalog.all()
+    var toolStates: [String: ToolState] = [:]
+    var selectedTools: Set<String> = []
+    @ObservationIgnored private var toolDefaultsApplied: Set<String> = []
+
+    // MARK: Cleaning
+    var isCleaning = false
+    var lastReport: CleanupSummary?
+    var cleanupMethod: CleanupMethod = .moveToTrash {
+        didSet { UserDefaults.standard.set(cleanupMethod.rawValue, forKey: Prefs.cleanupMethod) }
+    }
+
+    // MARK: Apps
+    var apps: [InstalledApp] = []
+    var isLoadingApps = false
+    var appsLoaded = false
+
+    // MARK: Explorer
+    var explorerFolder = FileManager.default.homeDirectoryForCurrentUser
+    var explorerEntries: [FolderEntry] = []
+    var explorerError: String?
+    @ObservationIgnored private var explorerTask: Task<Void, Never>?
+    @ObservationIgnored private var explorerCache: [URL: [FolderEntry]] = [:]
+
+    // MARK: Large files
+    var largeFilesRoot = FileManager.default.homeDirectoryForCurrentUser
+    var largeFilesMinimum: Int64 = 500_000_000
+    var largeFiles: [CleanupItem] = []
+    var isSearchingLargeFiles = false
+
+    @ObservationIgnored private var monitorTask: Task<Void, Never>?
+    @ObservationIgnored private var mountObservers: [NSObjectProtocol] = []
+    @ObservationIgnored private var lowSpaceNotified = false
+    @ObservationIgnored private var started = false
+
+    private init() {
+        for tool in tools {
+            toolStates[tool.id] = ToolState(options: tool.defaultOptions)
+        }
+    }
+
+    // MARK: - Lifecycle
+
+    func start() {
+        guard !started else { return }
+        started = true
+        Prefs.register()
+        cleanupMethod = CleanupMethod(rawValue: UserDefaults.standard.string(forKey: Prefs.cleanupMethod) ?? "") ?? .moveToTrash
+
+        monitorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                self?.updateVolume()
+                try? await Task.sleep(for: .seconds(300))
+            }
+        }
+        observeMounts()
+        if Prefs.bool(Prefs.scanOnLaunch) {
+            Task { await refresh() }
+        }
+    }
+
+    /// Refreshes usage for all mounted disks.
+    func updateVolume() {
+        volumes = VolumeInfo.mounted()
+        checkLowSpace()
+    }
+
+    private func observeMounts() {
+        let center = NSWorkspace.shared.notificationCenter
+        let names: [Notification.Name] = [
+            NSWorkspace.didMountNotification, NSWorkspace.didUnmountNotification, NSWorkspace.didRenameVolumeNotification,
+        ]
+        mountObservers = names.map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { AppModel.shared.disksChanged() }
+            }
+        }
+    }
+
+    private func disksChanged() {
+        updateVolume()
+        // Add or drop the per-disk Trash categories.
+        if lastScanDate != nil { Task { await scanCategories() } }
+        if case .category(let id) = selection, scan(for: id) == nil { selection = .overview }
+    }
+
+    func eject(_ volume: VolumeInfo) {
+        let url = volume.url
+        Task {
+            let error: String? = await Task.detached {
+                do {
+                    try NSWorkspace.shared.unmountAndEjectDevice(at: url)
+                    return nil
+                } catch {
+                    return error.localizedDescription
+                }
+            }.value
+            if let error {
+                let alert = NSAlert()
+                alert.messageText = "Couldn't eject \(volume.name)"
+                alert.informativeText = error
+                alert.runModal()
+            }
+            disksChanged()
+        }
+    }
+
+    private func checkLowSpace() {
+        guard let volume else { return }
+        if isLowOnSpace {
+            guard !lowSpaceNotified, Prefs.bool(Prefs.lowSpaceNotifications) else { return }
+            lowSpaceNotified = true
+            let body = "Only \(ByteSize.format(volume.availableForImportantUsage)) is available on \(volume.name). Open Reclaim to free up space."
+            Task { await Notifier.post(title: "Your disk is almost full", body: body) }
+        } else {
+            lowSpaceNotified = false
+        }
+    }
+
+    // MARK: - Scanning
+
+    /// Rescans everything: disk usage, cleanup categories and tools (and apps, if they've been loaded).
+    func refresh() async {
+        updateVolume()
+        async let categories: Void = scanCategories()
+        async let tools: Void = refreshTools()
+        _ = await (categories, tools)
+        if appsLoaded { await loadApps() }
+    }
+
+    func scanCategories() async {
+        guard !isScanning else { return }
+        isScanning = true
+        defer { isScanning = false }
+
+        let catalog = CategoryCatalog.all(oldDownloadsDays: max(1, Prefs.int(Prefs.oldDownloadsDays)))
+            + CategoryCatalog.volumeCategories(for: volumes)
+        let order = Dictionary(uniqueKeysWithValues: catalog.enumerated().map { ($1.id, $0) })
+
+        // Results are applied one category at a time. Reading a protected folder (e.g. Downloads)
+        // can block on a macOS privacy prompt, and that shouldn't hold up everything else.
+        await withTaskGroup(of: CategoryScan.self) { group in
+            for category in catalog {
+                group.addTask { await Self.scanInBackground(category) }
+            }
+            for await result in group {
+                apply(result, order: order)
+            }
+        }
+        lastScanDate = Date()
+    }
+
+    /// `nonisolated async` so the (blocking) file system walk runs off the main actor.
+    nonisolated private static func scanInBackground(_ category: CleanupCategory) async -> CategoryScan {
+        Scanner().scan(category)
+    }
+
+    private func apply(_ result: CategoryScan, order: [String: Int]) {
+        // Drop categories that weren't in this catalog (e.g. an ejected disk's Trash).
+        var updated = scans.filter { order[$0.id] != nil && $0.id != result.id }
+        if result.isPresent { updated.append(result) }
+        updated.sort { (order[$0.id] ?? .max) < (order[$1.id] ?? .max) }
+        scans = updated
+
+        // Default selection: everything in Safe categories, nothing elsewhere.
+        selectedItems[result.id] = result.category.safety == .safe ? Set(result.items.map(\.url)) : []
+    }
+
+    func scan(for id: String) -> CategoryScan? { scans.first { $0.id == id } }
+
+    var categoriesTotal: Int64 { scans.reduce(0) { $0 + $1.totalSize } }
+
+    var totalReclaimable: Int64 {
+        categoriesTotal + tools.reduce(0) { $0 + (toolReclaimable($1.id) ?? 0) }
+    }
+
+    var safeReclaimable: Int64 {
+        scans.filter { $0.category.safety == .safe }.reduce(0) { $0 + $1.totalSize }
+            + tools.filter { $0.safety == .safe }.reduce(0) { $0 + (toolReclaimable($1.id) ?? 0) }
+    }
+
+    var inaccessibleCount: Int { scans.reduce(0) { $0 + $1.inaccessibleCount } }
+
+    // MARK: - Category selection
+
+    func isSelected(_ item: CleanupItem, in scan: CategoryScan) -> Bool {
+        selectedItems[scan.id, default: []].contains(item.url)
+    }
+
+    func setSelected(_ selected: Bool, item: CleanupItem, in scan: CategoryScan) {
+        if selected {
+            selectedItems[scan.id, default: []].insert(item.url)
+        } else {
+            selectedItems[scan.id, default: []].remove(item.url)
+        }
+    }
+
+    func selectAll(_ selected: Bool, in scan: CategoryScan) {
+        selectedItems[scan.id] = selected ? Set(scan.items.map(\.url)) : []
+    }
+
+    func selectedItems(in scan: CategoryScan) -> [CleanupItem] {
+        let urls = selectedItems[scan.id, default: []]
+        return scan.items.filter { urls.contains($0.url) }
+    }
+
+    func selectedSize(in scan: CategoryScan) -> Int64 {
+        selectedItems(in: scan).reduce(0) { $0 + $1.size }
+    }
+
+    var totalSelectedSize: Int64 {
+        scans.reduce(0) { $0 + selectedSize(in: $1) }
+            + selectedTools.reduce(0) { $0 + (toolReclaimable($1) ?? 0) }
+    }
+
+    var hasSelection: Bool {
+        scans.contains { !selectedItems(in: $0).isEmpty } || !selectedTools.isEmpty
+    }
+
+    // MARK: - Tools
+
+    func tool(_ id: String) -> (any MaintenanceTool)? { tools.first { $0.id == id } }
+
+    func toolState(_ id: String) -> ToolState {
+        toolStates[id] ?? ToolState(options: [])
+    }
+
+    /// Tools that are installed (or still being checked).
+    var visibleTools: [any MaintenanceTool] {
+        tools.filter { toolStates[$0.id]?.status?.availability != .notInstalled }
+    }
+
+    func toolReclaimable(_ id: String) -> Int64? {
+        let state = toolState(id)
+        guard let status = state.status, status.isReady else { return nil }
+        return status.reclaimable(options: state.options)
+    }
+
+    func setOption(_ optionID: String, enabled: Bool, toolID: String) {
+        if enabled {
+            toolStates[toolID]?.options.insert(optionID)
+        } else {
+            toolStates[toolID]?.options.remove(optionID)
+        }
+    }
+
+    func setToolSelected(_ selected: Bool, toolID: String) {
+        if selected { selectedTools.insert(toolID) } else { selectedTools.remove(toolID) }
+    }
+
+    func refreshTools() async {
+        await withTaskGroup(of: Void.self) { group in
+            for tool in tools {
+                group.addTask { await self.refreshTool(tool.id) }
+            }
+        }
+    }
+
+    func refreshTool(_ id: String) async {
+        guard let tool = tool(id), toolStates[id]?.isLoading != true else { return }
+        toolStates[id]?.isLoading = true
+        let status = await tool.status()
+        toolStates[id]?.status = status
+        toolStates[id]?.isLoading = false
+
+        if !status.isReady { selectedTools.remove(id) }
+        if status.isReady && !toolDefaultsApplied.contains(id) {
+            toolDefaultsApplied.insert(id)
+            if tool.safety == .safe, (toolReclaimable(id) ?? 0) > 0 { selectedTools.insert(id) }
+        }
+    }
+
+    func deleteSnapshot(named name: String) async {
+        guard let snapshot = TimeMachineTool.parseSnapshots(name).first else { return }
+        toolStates["time-machine"]?.isCleaning = true
+        do {
+            _ = try await TimeMachineTool().delete(snapshot, allowAdministrator: true)
+        } catch {
+            toolStates["time-machine"]?.error = error.localizedDescription
+        }
+        toolStates["time-machine"]?.isCleaning = false
+        updateVolume()
+        await refreshTool("time-machine")
+    }
+
+    // MARK: - Cleaning
+
+    /// Cleans everything currently selected in the overview.
+    func cleanSelected() async {
+        let categories = scans.map { ($0.category, selectedItems(in: $0)) }
+        await clean(categories: categories, toolIDs: Array(selectedTools))
+    }
+
+    func cleanCategory(_ id: String) async {
+        guard let scan = scan(for: id) else { return }
+        await clean(categories: [(scan.category, selectedItems(in: scan))], toolIDs: [])
+    }
+
+    func cleanTool(_ id: String) async {
+        await clean(categories: [], toolIDs: [id])
+    }
+
+    /// Cleans every Safe category and Safe tool, ignoring the current selection (used by the menu bar).
+    func cleanAllSafe() async {
+        let categories = scans.filter { $0.category.safety == .safe }.map { ($0.category, $0.items) }
+        let toolIDs = tools.filter { $0.safety == .safe && toolState($0.id).status?.isReady == true }.map(\.id)
+        await clean(categories: categories, toolIDs: toolIDs)
+    }
+
+    /// Empties the Trash on every disk.
+    func emptyTrash() async {
+        let trashes = scans.filter { $0.id == "trash" || $0.category.group == .otherDisks }
+        await clean(categories: trashes.map { ($0.category, $0.items) }, toolIDs: [])
+    }
+
+    private func clean(categories: [(CleanupCategory, [CleanupItem])], toolIDs: [String]) async {
+        let categories = categories.filter { !$0.1.isEmpty }
+        guard !categories.isEmpty || !toolIDs.isEmpty, !isCleaning else { return }
+        isCleaning = true
+        defer { isCleaning = false }
+
+        var summary = CleanupSummary()
+        let method = cleanupMethod
+
+        let reports = await Task.detached(priority: .userInitiated) {
+            let cleaner = Cleaner()
+            return categories.map { category, items in
+                (category, cleaner.clean(items, in: category, method: method))
+            }
+        }.value
+        for (category, report) in reports {
+            if category.deletesPermanently || method == .deletePermanently {
+                summary.freed += report.bytesFreed
+            } else {
+                summary.trashed += report.bytesFreed
+            }
+            summary.failures += report.failures.map { "\($0.item.name): \($0.message)" }
+        }
+
+        for id in toolIDs {
+            guard let tool = tool(id) else { continue }
+            let estimate = toolReclaimable(id)
+            toolStates[id]?.isCleaning = true
+            do {
+                let result = try await tool.clean(options: toolState(id).options, allowAdministrator: true)
+                summary.freed += result.freed ?? estimate ?? 0
+                toolStates[id]?.error = nil
+            } catch {
+                summary.failures.append("\(tool.name): \(error.localizedDescription)")
+                toolStates[id]?.error = error.localizedDescription
+            }
+            toolStates[id]?.isCleaning = false
+        }
+
+        lastReport = summary
+        updateVolume()
+        if !categories.isEmpty { await scanCategories() }
+        for id in toolIDs { await refreshTool(id) }
+    }
+
+    // MARK: - Apps
+
+    func loadApps() async {
+        guard !isLoadingApps else { return }
+        isLoadingApps = true
+        apps = await AppInventory().scan()
+        appsLoaded = true
+        isLoadingApps = false
+    }
+
+    func unusedApps(days: Int) -> [InstalledApp] {
+        apps.filter { $0.isUnused(days: days) }
+    }
+
+    func leftovers(for app: InstalledApp) async -> [CleanupItem] {
+        await Task.detached(priority: .userInitiated) {
+            AppInventory().leftovers(for: app)
+        }.value
+    }
+
+    static func isRunning(_ app: InstalledApp) -> Bool {
+        guard let id = app.bundleID else { return false }
+        return NSRunningApplication.runningApplications(withBundleIdentifier: id).contains { !$0.isTerminated }
+    }
+
+    static func quit(_ app: InstalledApp) {
+        guard let id = app.bundleID else { return }
+        NSRunningApplication.runningApplications(withBundleIdentifier: id).forEach { $0.terminate() }
+    }
+
+    /// Returns a report; if the app itself couldn't be moved, the caller can offer `uninstallAsAdministrator`.
+    func uninstall(_ app: InstalledApp, leftovers: [CleanupItem]) async -> CleanupReport {
+        let method = cleanupMethod
+        let report = await Task.detached(priority: .userInitiated) {
+            AppUninstaller().uninstall(app, leftovers: leftovers, method: method)
+        }.value
+        if report.removed.contains(where: { $0.url == app.url }) {
+            apps.removeAll { $0.url == app.url }
+        }
+        updateVolume()
+        return report
+    }
+
+    func uninstallAsAdministrator(_ app: InstalledApp, leftovers: [CleanupItem]) async throws -> CleanupReport {
+        let uninstaller = AppUninstaller()
+        try await uninstaller.moveToTrashAsAdministrator(app)
+        apps.removeAll { $0.url == app.url }
+        let method = cleanupMethod
+        var report = await Task.detached(priority: .userInitiated) {
+            uninstaller.removeLeftovers(leftovers, of: app, method: method)
+        }.value
+        report.removed.insert(CleanupItem(url: app.url, size: app.size, modified: app.lastUsed), at: 0)
+        updateVolume()
+        return report
+    }
+
+    // MARK: - Explorer
+
+    var explorerTotal: Int64 { explorerEntries.reduce(0) { $0 + ($1.size ?? 0) } }
+    var isExploring: Bool { explorerEntries.contains { $0.size == nil } }
+
+    func explore(_ folder: URL, useCache: Bool = true) {
+        explorerTask?.cancel()
+        explorerFolder = folder
+        explorerError = nil
+
+        if useCache, let cached = explorerCache[folder] {
+            explorerEntries = cached
+            return
+        }
+
+        let entries: [FolderEntry]
+        do {
+            entries = try FolderExplorer.list(folder)
+        } catch {
+            explorerEntries = []
+            explorerError = error.localizedDescription
+            return
+        }
+        explorerEntries = entries
+
+        explorerTask = Task.detached(priority: .userInitiated) { [weak self] in
+            await withTaskGroup(of: FolderEntry.self) { group in
+                for entry in entries {
+                    group.addTask { FolderExplorer.measure(entry) }
+                }
+                for await measured in group {
+                    await self?.applyMeasurement(measured, in: folder)
+                }
+            }
+            await self?.finishExploring(folder)
+        }
+    }
+
+    private func applyMeasurement(_ entry: FolderEntry, in folder: URL) {
+        guard folder == explorerFolder, let index = explorerEntries.firstIndex(where: { $0.url == entry.url }) else { return }
+        explorerEntries[index] = entry
+    }
+
+    private func finishExploring(_ folder: URL) {
+        guard folder == explorerFolder, !Task.isCancelled, !isExploring else { return }
+        explorerEntries.sort { ($0.size ?? 0) > ($1.size ?? 0) }
+        explorerCache[folder] = explorerEntries
+    }
+
+    func trashExplorerEntry(_ entry: FolderEntry) {
+        do {
+            try FileManager.default.trashItem(at: entry.url, resultingItemURL: nil)
+            explorerEntries.removeAll { $0.url == entry.url }
+            // Sizes of this folder and its ancestors are now stale.
+            explorerCache = explorerCache.filter { !explorerFolder.normalizedPath.hasPrefix($0.key.normalizedPath) }
+            updateVolume()
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    func chooseExplorerFolder() {
+        if let url = Self.chooseFolder(startingAt: explorerFolder) { explore(url) }
+    }
+
+    // MARK: - Large files
+
+    func findLargeFiles() async {
+        isSearchingLargeFiles = true
+        let root = largeFilesRoot
+        let options = LargeFileFinder.Options(minimumSize: largeFilesMinimum, limit: 200)
+        largeFiles = await Task.detached(priority: .userInitiated) {
+            LargeFileFinder().find(in: root, options: options)
+        }.value
+        isSearchingLargeFiles = false
+    }
+
+    func trashLargeFile(_ item: CleanupItem) {
+        do {
+            try FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
+            largeFiles.removeAll { $0.url == item.url }
+            updateVolume()
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    func chooseLargeFilesRoot() {
+        if let url = Self.chooseFolder(startingAt: largeFilesRoot) {
+            largeFilesRoot = url
+            largeFiles = []
+        }
+    }
+
+    // MARK: - Helpers
+
+    static func chooseFolder(startingAt url: URL) -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.directoryURL = url
+        panel.prompt = "Choose"
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    static func revealInFinder(_ url: URL) {
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    static func openFullDiskAccessSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
