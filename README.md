@@ -24,7 +24,7 @@ With [Homebrew](https://brew.sh) (installs the app and the `reclaim` command):
 ```sh
 brew tap unfield/tap
 brew trust unfield/tap     # newer Homebrew versions require this for third-party taps
-brew install --cask reclaim
+brew install --cask unfield/tap/reclaim
 ```
 
 Or manually:
