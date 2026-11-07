@@ -38,6 +38,12 @@ private struct GeneralSettings: View {
                     Text("Deleting them immediately").tag(CleanupMethod.deletePermanently)
                 }
                 Toggle("Scan when Reclaim opens", isOn: $scanOnLaunch)
+                if Updater.shared.isAvailable {
+                    Toggle("Check for updates automatically", isOn: Binding(
+                        get: { Updater.shared.automaticallyChecksForUpdates },
+                        set: { Updater.shared.automaticallyChecksForUpdates = $0 }
+                    ))
+                }
                 Toggle("Open at login", isOn: $launchAtLogin)
                     .disabled(!Notifier.isSupported)
                     .onChange(of: launchAtLogin) { _, enabled in setLaunchAtLogin(enabled) }

@@ -471,6 +471,24 @@ final class AppModel {
         isLoadingApps = false
     }
 
+    /// Set when an app is dropped on Reclaim (window or Dock icon); the Applications screen shows the uninstall sheet.
+    var uninstallRequest: InstalledApp?
+
+    func requestUninstall(_ url: URL) {
+        guard let app = AppInventory.info(for: url.standardizedFileURL) else { return }
+        do {
+            try AppUninstaller().validate(app)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Can't uninstall \(app.name)"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+            return
+        }
+        selection = .apps
+        uninstallRequest = app
+    }
+
     func unusedApps(days: Int) -> [InstalledApp] {
         apps.filter { $0.isUnused(days: days) }
     }

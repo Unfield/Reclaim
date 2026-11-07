@@ -30,19 +30,28 @@ if [ ! -f "$ICON" ]; then
     swift scripts/make-icon.swift "$ICON"
 fi
 
+# --disable-keychain: SwiftPM otherwise queries the keychain for credentials and can block on a prompt.
+SWIFT_FLAGS="-c release --disable-keychain $ARCH_FLAGS"
+
 echo "Building Reclaim $VERSION ($BUILD_NUMBER)${ARCHS:+ for $ARCHS}"
 # shellcheck disable=SC2086
-swift build -c release --product ReclaimApp $ARCH_FLAGS
+swift build $SWIFT_FLAGS --product ReclaimApp
 # shellcheck disable=SC2086
-swift build -c release --product reclaim $ARCH_FLAGS
+swift build $SWIFT_FLAGS --product reclaim
 # shellcheck disable=SC2086
-BIN_DIR="$(swift build -c release $ARCH_FLAGS --show-bin-path)"
+BIN_DIR="$(swift build $SWIFT_FLAGS --show-bin-path)"
 
 rm -rf "$APP" build/reclaim
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks" "$APP/Contents/Helpers"
 cp "$BIN_DIR/ReclaimApp" "$APP/Contents/MacOS/Reclaim"
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
+ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+# The CLI ships inside the app too (Homebrew links it as `reclaim`).
+cp "$BIN_DIR/reclaim" "$APP/Contents/Helpers/reclaim"
 cp "$BIN_DIR/reclaim" build/reclaim
+if [ -d Localization ]; then
+    cp -R Localization/*.lproj "$APP/Contents/Resources/"
+fi
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -61,19 +70,44 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSHumanReadableCopyright</key><string>Open source under the MIT License.</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>de</string></array>
+    <key>SUFeedURL</key><string>https://github.com/Unfield/Reclaim/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>eeKDcidYBaZXwlIVv4C8UTGDR3E53oYrXqneH6xXiDg=</string>
+    <key>SUEnableInstallerLauncherService</key><false/>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <!-- Lets you drop an app on Reclaim's Dock icon to uninstall it. Rank None: never the default opener. -->
+            <key>CFBundleTypeName</key><string>Application</string>
+            <key>CFBundleTypeRole</key><string>None</string>
+            <key>LSHandlerRank</key><string>None</string>
+            <key>LSItemContentTypes</key><array><string>com.apple.application-bundle</string></array>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST
 
+# Sign inside-out: Sparkle's helpers, the framework, the CLI, then the app.
 if [ "$SIGN_IDENTITY" = "-" ]; then
     # Ad-hoc signature: enough to run locally; downloads will need to be opened via right-click → Open.
-    codesign --force --sign - build/reclaim
-    codesign --force --sign - "$APP"
+    SIGN="codesign --force --sign -"
 else
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" build/reclaim
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+    SIGN="codesign --force --options runtime --timestamp --sign $SIGN_IDENTITY"
 fi
-codesign --verify --strict "$APP"
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+for item in "$SPARKLE/XPCServices/Installer.xpc" "$SPARKLE/Autoupdate" "$SPARKLE/Updater.app"; do
+    [ -e "$item" ] && $SIGN "$item"
+done
+if [ -e "$SPARKLE/XPCServices/Downloader.xpc" ]; then
+    $SIGN --preserve-metadata=entitlements "$SPARKLE/XPCServices/Downloader.xpc"
+fi
+$SIGN "$APP/Contents/Frameworks/Sparkle.framework"
+$SIGN "$APP/Contents/Helpers/reclaim"
+$SIGN build/reclaim
+$SIGN "$APP"
+codesign --verify --deep --strict "$APP"
 
 echo "Built $APP and build/reclaim"
 

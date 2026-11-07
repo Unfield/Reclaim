@@ -8,11 +8,11 @@ cd "$(dirname "$0")/.."
 if xcode-select -p | grep -q CommandLineTools; then
     FRAMEWORKS="$(xcode-select -p)/Library/Developer/Frameworks"
     # -disable-cross-import-overlays works around CLT installs missing _Testing_Foundation's module files.
-    exec swift test \
+    exec swift test --disable-keychain \
         -Xswiftc -F -Xswiftc "$FRAMEWORKS" \
         -Xswiftc -Xfrontend -Xswiftc -disable-cross-import-overlays \
         -Xlinker -rpath -Xlinker "$FRAMEWORKS" \
         "$@"
 else
-    exec swift test "$@"
+    exec swift test --disable-keychain "$@"
 fi

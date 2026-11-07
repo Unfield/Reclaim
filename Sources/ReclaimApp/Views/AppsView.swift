@@ -125,6 +125,17 @@ struct AppsView: View {
         .task {
             if !model.appsLoaded { await model.loadApps() }
         }
+        // Drag an app here (from Finder or the Dock's Applications stack) to uninstall it.
+        .dropDestination(for: URL.self) { urls, _ in
+            guard let url = urls.first(where: { $0.pathExtension == "app" }) else { return false }
+            model.requestUninstall(url)
+            return true
+        }
+        .onChange(of: model.uninstallRequest, initial: true) { _, request in
+            guard let request else { return }
+            appToUninstall = request
+            model.uninstallRequest = nil
+        }
         .sheet(item: $appToUninstall) { app in
             UninstallSheet(app: app)
         }

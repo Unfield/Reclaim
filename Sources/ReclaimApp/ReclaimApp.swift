@@ -7,10 +7,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Needed when launched as a bare executable (e.g. `swift run`) rather than from an .app bundle.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
-        MainActor.assumeIsolated { AppModel.shared.start() }
+        MainActor.assumeIsolated {
+            AppModel.shared.start()
+            _ = Updater.shared
+        }
     }
 
     /// Keep running in the menu bar after the window closes, if the menu bar item is enabled.
+    /// Apps dropped on Reclaim's Dock icon open the uninstaller.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let app = urls.first(where: { $0.pathExtension == "app" }) else { return }
+        MainActor.assumeIsolated {
+            AppModel.shared.requestUninstall(app)
+            NSApp.activate()
+            NSApp.windows.first { $0.identifier?.rawValue == "main" || $0.title == "Reclaim" }?.makeKeyAndOrderFront(nil)
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         !Prefs.bool(Prefs.showMenuBarExtra)
     }
@@ -58,9 +71,15 @@ struct ReclaimApp: App {
                 .keyboardShortcut("z", modifiers: [.command, .option])
                 .disabled(model.trashHistory.isEmpty)
             }
+            CommandGroup(after: .appInfo) {
+                if Updater.shared.isAvailable {
+                    Button("Check for Updates…") { Updater.shared.checkForUpdates() }
+                        .disabled(!Updater.shared.canCheckForUpdates)
+                }
+            }
             CommandGroup(replacing: .help) {
                 Link("Reclaim on GitHub", destination: ReclaimInfo.repositoryURL)
-                Link("Check for Updates…", destination: ReclaimInfo.releasesURL)
+                Link("Release Notes", destination: ReclaimInfo.releasesURL)
                 Divider()
                 Link("Report an Issue…", destination: ReclaimInfo.issuesURL)
             }

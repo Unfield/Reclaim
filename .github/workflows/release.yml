@@ -26,6 +26,9 @@ jobs:
       NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
       NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
       NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+      # In-app updates (Sparkle) and the Homebrew tap.
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -69,6 +72,36 @@ jobs:
           export VERSION="${TAG#v}"
           ./scripts/package.sh
 
+      - name: Sign update and write appcast
+        if: env.SPARKLE_PRIVATE_KEY != ''
+        run: |
+          VERSION="${TAG#v}"
+          SIGN_UPDATE="$(find .build/artifacts -path '*Sparkle/bin/sign_update' -type f | head -1)"
+          KEY_FILE="$RUNNER_TEMP/sparkle_key"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$KEY_FILE"
+          SIGNATURE="$("$SIGN_UPDATE" --ed-key-file "$KEY_FILE" "dist/Reclaim-$VERSION.zip")"
+          rm "$KEY_FILE"
+          BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' build/Reclaim.app/Contents/Info.plist)"
+          PUB_DATE="$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')"
+          cat > dist/appcast.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Reclaim</title>
+              <item>
+                <title>Reclaim $VERSION</title>
+                <pubDate>$PUB_DATE</pubDate>
+                <sparkle:version>$BUILD_NUMBER</sparkle:version>
+                <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <sparkle:releaseNotesLink>https://github.com/Unfield/Reclaim/releases/tag/$TAG</sparkle:releaseNotesLink>
+                <enclosure url="https://github.com/Unfield/Reclaim/releases/download/$TAG/Reclaim-$VERSION.zip" type="application/octet-stream" $SIGNATURE />
+              </item>
+            </channel>
+          </rss>
+          EOF
+          cat dist/appcast.xml
+
       - name: Write release notes
         run: |
           VERSION="${TAG#v}"
@@ -106,3 +139,25 @@ jobs:
           else
             gh release create "$TAG" dist/* --title "Reclaim ${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md" $PRERELEASE
           fi
+
+      - name: Check out Homebrew tap
+        if: env.HOMEBREW_TAP_DEPLOY_KEY != '' && !contains(env.TAG, '-')
+        uses: actions/checkout@v7
+        with:
+          repository: Unfield/homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: homebrew-tap
+
+      - name: Update Homebrew cask
+        if: env.HOMEBREW_TAP_DEPLOY_KEY != '' && !contains(env.TAG, '-')
+        run: |
+          VERSION="${TAG#v}"
+          SHA="$(shasum -a 256 "dist/Reclaim-$VERSION.dmg" | cut -d' ' -f1)"
+          mkdir -p homebrew-tap/Casks
+          sed -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$SHA/" packaging/homebrew/reclaim.rb > homebrew-tap/Casks/reclaim.rb
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/reclaim.rb
+          git diff --cached --quiet || git commit -m "reclaim $VERSION"
+          git push

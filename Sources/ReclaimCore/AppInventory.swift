@@ -86,7 +86,7 @@ public struct AppInventory: Sendable {
         return bundles
     }
 
-    static func info(for url: URL) -> InstalledApp? {
+    public static func info(for url: URL) -> InstalledApp? {
         let plist = Bundle(url: url)?.infoDictionary
         let name = FileManager.default.displayName(atPath: url.path(percentEncoded: false))
             .replacingOccurrences(of: ".app", with: "", options: [.anchored, .backwards])
