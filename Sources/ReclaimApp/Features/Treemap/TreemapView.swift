@@ -10,6 +10,8 @@ struct TreemapView: View {
     @Binding var selection: FolderEntry.ID?
     /// Called when a folder should be opened (e.g. double-click).
     let onOpen: (FolderEntry) -> Void
+    /// Offers "Move to Trash…" in a tile's context menu when set.
+    var onTrash: ((FolderEntry) -> Void)? = nil
 
     @State private var hovered: TreemapTile.ID?
     @FocusState private var isFocused: Bool
@@ -107,6 +109,10 @@ struct TreemapView: View {
                     Button("Open") { onOpen(entry) }
                 }
                 Button("Reveal in Finder") { AppModel.revealInFinder(entry.url) }
+                if let onTrash {
+                    Divider()
+                    Button("Move to Trash…") { onTrash(entry) }
+                }
             }
         }
         .accessibilityElement(children: .ignore)

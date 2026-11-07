@@ -398,7 +398,7 @@ public struct DuplicateFinder: Sendable {
     private func enumerate(_ roots: [URL], reporter: inout ProgressReporter, unreadable: inout Int) throws -> [Int64: [DuplicateFile]] {
         let minimumSize = max(1, options.minimumSize)
         var bySize = [Int64: [DuplicateFile]]()
-        var seen = Set<FileIdentity>()
+        var seen = Set<DuplicateFileIdentity>()
         let errors = ErrorCounter()
 
         for root in roots {
@@ -631,14 +631,14 @@ public struct DuplicateRemover: Sendable {
 
 // MARK: - Helpers
 
-struct FileIdentity: Hashable {
+struct DuplicateFileIdentity: Hashable {
     let device: Int32
     let inode: UInt64
 }
 
 /// `lstat` facts about a path (symlinks are reported as such, never followed).
 struct FileInfo {
-    let identity: FileIdentity
+    let identity: DuplicateFileIdentity
     let isRegular: Bool
     let isDataless: Bool
     let size: Int64
@@ -652,7 +652,7 @@ struct FileInfo {
     }
 
     init(_ info: stat) {
-        identity = FileIdentity(device: info.st_dev, inode: info.st_ino)
+        identity = DuplicateFileIdentity(device: info.st_dev, inode: info.st_ino)
         isRegular = (info.st_mode & S_IFMT) == S_IFREG
         isDataless = (info.st_flags & UInt32(SF_DATALESS)) != 0
         size = info.st_size
@@ -661,7 +661,7 @@ struct FileInfo {
     }
 
     func matches(_ file: DuplicateFile) -> Bool {
-        isRegular && identity == FileIdentity(device: file.device, inode: file.inode)
+        isRegular && identity == DuplicateFileIdentity(device: file.device, inode: file.inode)
             && size == file.size && modified == file.modified
     }
 

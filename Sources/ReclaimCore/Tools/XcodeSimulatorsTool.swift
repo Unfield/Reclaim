@@ -285,21 +285,10 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
         let candidates = runtimes.filter { runtime in
             runtime.isDeletable && !(runtime.state?.localizedCaseInsensitiveContains("delet") ?? false)
         }
-        var newest = [String: String]()
-        for runtime in runtimes {
-            guard let version = runtime.version else { continue }
-            if newest[runtime.platformKey].map({ compareVersions(version, $0) == .orderedDescending }) ?? true {
-                newest[runtime.platformKey] = version
-            }
-        }
+        // Only runtimes no available simulator uses: deleting a used one would make those simulators unusable.
         return candidates
             .filter { runtime in
-                let isUsed = runtime.runtimeIdentifier.map(inUse.contains) ?? true
-                var isOlder = false
-                if let version = runtime.version, let latest = newest[runtime.platformKey] {
-                    isOlder = compareVersions(version, latest) == .orderedAscending
-                }
-                return !isUsed || isOlder
+                !(runtime.runtimeIdentifier.map(inUse.contains) ?? true)
             }
             .sorted { ($0.platformKey, $0.version ?? "") < ($1.platformKey, $1.version ?? "") }
     }

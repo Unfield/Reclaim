@@ -41,7 +41,7 @@ struct ScheduleSettingsView: View {
             } header: {
                 Text("Scheduled Cleanup")
             } footer: {
-                Text("Cleans everything marked Safe, like “Clean Safe Items” in the menu bar: app caches, logs and the Trash. Runs around \(Self.slotTime), or as soon as possible after that if your Mac was asleep. Reclaim needs to be open, in the menu bar is enough.")
+                Text("Cleans everything marked Safe, like “Clean Safe Items” in the menu bar (app caches, logs, build data), but never empties the Trash, so you can still put things back. Runs around \(Self.slotTime), or as soon as possible after that if your Mac was asleep. Reclaim needs to be open, in the menu bar is enough.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

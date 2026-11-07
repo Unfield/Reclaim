@@ -245,9 +245,8 @@ final class HistoryModel {
             setLastResult("Skipped, Reclaim was busy")
             return
         }
-        let previousReport = appModel.lastReport?.id
-        await appModel.cleanAllSafe()
-        let report = appModel.lastReport.flatMap { $0.id == previousReport ? nil : $0 }
+        // Unattended runs never empty the Trash (that's permanent) and don't pop up the result alert.
+        let report = await appModel.cleanAllSafe(includingTrash: false, showReport: false)
 
         guard let report, report.total > 0 || !report.failures.isEmpty else {
             setLastResult("Nothing needed cleaning")

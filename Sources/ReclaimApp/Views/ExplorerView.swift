@@ -18,9 +18,14 @@ struct ExplorerView: View {
             } else if entries.isEmpty {
                 ContentUnavailableView("Empty Folder", systemImage: "folder")
             } else if showsTreemap {
-                TreemapView(entries: entries, selection: $selection) { entry in
-                    if entry.isFolder { model.explore(entry.url) } else { AppModel.revealInFinder(entry.url) }
-                }
+                TreemapView(
+                    entries: entries,
+                    selection: $selection,
+                    onOpen: { entry in
+                        if entry.isFolder { model.explore(entry.url) } else { AppModel.revealInFinder(entry.url) }
+                    },
+                    onTrash: { pendingTrash = $0 }
+                )
             } else {
                 Table(entries, selection: $selection) {
                     TableColumn("Name") { entry in

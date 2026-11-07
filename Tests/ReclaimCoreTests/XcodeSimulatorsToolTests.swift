@@ -180,9 +180,9 @@ import Testing
         let devices = try #require(XcodeSimulatorsTool.parseDevices(Self.devicesJSON))
         let runtimes = try #require(XcodeSimulatorsTool.parseRuntimes(Self.runtimesJSON))
         let removable = XcodeSimulatorsTool.removableRuntimes(runtimes, devices: devices)
-        // iOS 17.0: used by a simulator but older than iOS 18.2. watchOS 10.0: no simulators.
-        // Not offered: iOS 18.2 (newest and used), iOS 16.4 (not deletable), iOS 15.5 (already being deleted).
-        #expect(removable.map(\.displayName) == ["iOS 17.0", "watchOS 10.0"])
+        // watchOS 10.0: no simulators. Not offered: iOS 17.0 and 18.2 (used by simulators),
+        // iOS 16.4 (not deletable), iOS 15.5 (already being deleted).
+        #expect(removable.map(\.displayName) == ["watchOS 10.0"])
     }
 
     @Test func helpers() {
@@ -259,8 +259,9 @@ import Testing
         #expect(status.entries[0].size == 3_050)
         #expect(status.entries[0].detail == "2 devices: iPhone 14 (iOS 16.4), iPad Air (5th generation) (iOS 16.4)")
         #expect(status.entries[0].optionID == nil)
-        #expect(status.entries[1].size == 10_511_510_272) // iOS 17.0 + watchOS 10.0
-        #expect(status.entries[1].detail == "iOS 17.0, watchOS 10.0")
+        #expect(status.entries.count == 3)
+        #expect(status.entries[1].size == 3_500_000_000) // watchOS 10.0
+        #expect(status.entries[1].detail == "watchOS 10.0")
         #expect(status.entries[1].optionID == "runtimes")
         #expect(status.entries[2].size == 70_000)
         #expect(status.entries[2].optionID == "erase-all")
@@ -305,7 +306,6 @@ import Testing
         #expect(shell.commands == [
             "xcrun simctl runtime list --json",
             "xcrun simctl list devices --json",
-            "xcrun simctl runtime delete 11111111-AAAA-4000-8000-000000000001",
             "xcrun simctl runtime delete 33333333-CCCC-4000-8000-000000000003",
             "xcrun simctl list devices --json",
             "xcrun simctl delete unavailable",
@@ -313,8 +313,8 @@ import Testing
             "xcrun simctl shutdown all",
             "xcrun simctl erase all",
         ])
-        // Only the runtime that was actually deleted counts.
-        #expect(result.freed == 7_011_510_272)
+        // A runtime that fails to delete is logged, skipped and not counted.
+        #expect(result.freed == 0)
         #expect(result.log.contains("Couldn't delete watchOS 10.0"))
     }
 

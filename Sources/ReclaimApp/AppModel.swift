@@ -388,10 +388,17 @@ final class AppModel {
     }
 
     /// Cleans every Safe category and Safe tool, ignoring the current selection (used by the menu bar).
-    func cleanAllSafe() async {
-        let categories = scans.filter { $0.category.safety == .safe }.map { ($0.category, $0.items) }
+    /// - Parameters:
+    ///   - includingTrash: Whether to empty the Trash (permanent). Unattended runs pass `false`.
+    ///   - showReport: Whether to show the result alert.
+    @discardableResult
+    func cleanAllSafe(includingTrash: Bool = true, showReport: Bool = true) async -> CleanupSummary? {
+        let categories = scans
+            .filter { $0.category.safety == .safe }
+            .filter { includingTrash || !$0.category.deletesPermanently }
+            .map { ($0.category, $0.items) }
         let toolIDs = tools.filter { $0.safety == .safe && toolState($0.id).status?.isReady == true }.map(\.id)
-        await clean(categories: categories, toolIDs: toolIDs)
+        return await clean(categories: categories, toolIDs: toolIDs, showReport: showReport)
     }
 
     /// Empties the Trash on every disk.
@@ -400,9 +407,10 @@ final class AppModel {
         await clean(categories: trashes.map { ($0.category, $0.items) }, toolIDs: [])
     }
 
-    private func clean(categories: [(CleanupCategory, [CleanupItem])], toolIDs: [String]) async {
+    @discardableResult
+    private func clean(categories: [(CleanupCategory, [CleanupItem])], toolIDs: [String], showReport: Bool = true) async -> CleanupSummary? {
         let categories = categories.filter { !$0.1.isEmpty }
-        guard !categories.isEmpty || !toolIDs.isEmpty, !isCleaning else { return }
+        guard !categories.isEmpty || !toolIDs.isEmpty, !isCleaning else { return nil }
         isCleaning = true
         defer { isCleaning = false }
 
@@ -446,10 +454,11 @@ final class AppModel {
             toolStates[id]?.isCleaning = false
         }
 
-        lastReport = summary
+        if showReport { lastReport = summary }
         updateVolume()
         if !categories.isEmpty { await scanCategories() }
         for id in toolIDs { await refreshTool(id) }
+        return summary
     }
 
     // MARK: - Apps
@@ -551,6 +560,7 @@ final class AppModel {
         updateVolume()
         if lastScanDate != nil { await scanCategories() }
         if appsLoaded { await loadApps() }
+        if orphans.hasScanned { await orphans.scan() }
     }
 
     /// Call after removing files outside the normal cleanup flow, so disk usage stays current.
