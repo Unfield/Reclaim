@@ -130,6 +130,10 @@ final class AppModel {
         started = true
         Prefs.register()
         cleanupMethod = CleanupMethod(rawValue: UserDefaults.standard.string(forKey: Prefs.cleanupMethod) ?? "") ?? .moveToTrash
+        // `open Reclaim.app --args -ReclaimScreen memory` opens a specific screen (handy for screenshots).
+        if let screen = UserDefaults.standard.string(forKey: "ReclaimScreen") {
+            selection = Self.screens[screen] ?? selection
+        }
 
         refreshTrashHistory()
         monitorTask = Task { [weak self] in
@@ -146,6 +150,12 @@ final class AppModel {
     }
 
     /// Refreshes usage for all mounted disks.
+    private static let screens: [String: SidebarItem] = [
+        "overview": .overview, "apps": .apps, "explorer": .explorer, "large": .largeFiles, "memory": .memory,
+        "projects": .projects, "leftovers": .orphans, "duplicates": .duplicates, "models": .aiModels,
+        "icloud": .icloud, "cpu": .activity, "login": .loginItems, "history": .history, "removed": .recentlyRemoved,
+    ]
+
     func updateVolume() {
         volumes = VolumeInfo.mounted()
         history.record(volumes)

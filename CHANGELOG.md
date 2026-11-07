@@ -4,6 +4,30 @@ All notable changes to Reclaim are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
+### Added
+- **Recently Removed / Undo:** everything Reclaim moves to the Trash (cleanups, uninstalls, explorer, duplicates, projects, leftovers…) can be put back (⌥⌘Z, `reclaim undo`).
+- **Exclusions:** "Never Clean This" in category lists, a Settings tab, and `reclaim exclude`.
+- **Developer Projects:** finds `node_modules`, `target`, `.venv`, `.build`, Gradle, Pods and other rebuildable folders in projects you haven't touched in a while (`reclaim projects`).
+- **App Leftovers:** support files of apps that are no longer installed (`reclaim leftovers`).
+- **Duplicates:** identical files verified with SHA-256, clone-aware, always keeping one copy (`reclaim duplicates`).
+- **AI Models:** Ollama, LM Studio, Hugging Face, GPT4All and PyTorch models, with per-model removal (`reclaim models`).
+- **iCloud Drive:** removes local copies of files you haven't opened in a while. They stay in iCloud (`reclaim icloud`).
+- **CPU & Energy:** overall load, thermal state and the busiest apps (`reclaim cpu`).
+- **Login Items:** launch agents and daemons, with on/off and removal of broken items (`reclaim login-items`).
+- **Disk History:** free space over time with a forecast of when each disk fills up. The Overview shows it too (`reclaim history`).
+- **Scheduled cleanup** (daily, weekly or monthly, optionally only when space is low) and an optional weekly summary notification.
+- **Space Explorer treemap.**
+- New categories: old editor extensions (VS Code, Cursor, Windsurf), old JetBrains IDE data, Android emulator images, Unity cache, leftover installers. New tool: Xcode Simulators.
+- Drag an app onto the Applications screen or Reclaim's Dock icon to uninstall it.
+- In-app updates (Sparkle), Homebrew cask (`brew install --cask unfield/tap/reclaim`), and the `reclaim` command bundled inside the app.
+- German translation.
+- Collapsible sidebar sections.
+
+### Changed
+- Scheduled cleanups never empty the Trash, so everything they remove can be put back.
+
 ## [0.4.0] - 2026-11-07
 
 ### Added
