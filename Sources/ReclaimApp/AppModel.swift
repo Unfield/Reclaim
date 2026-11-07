@@ -10,6 +10,15 @@ enum SidebarItem: Hashable {
     case explorer
     case largeFiles
     case memory
+    case projects
+    case orphans
+    case duplicates
+    case aiModels
+    case icloud
+    case activity
+    case loginItems
+    case history
+    case recentlyRemoved
 }
 
 struct ToolState {
@@ -25,6 +34,8 @@ struct CleanupSummary: Identifiable {
     var freed: Int64 = 0
     var trashed: Int64 = 0
     var failures: [String] = []
+    /// The undo batch for items moved to the Trash, if any.
+    var undoBatchID: UUID?
 
     var total: Int64 { freed + trashed }
 }
@@ -35,6 +46,16 @@ final class AppModel {
     static let shared = AppModel()
 
     var selection: SidebarItem? = .overview
+
+    // MARK: Feature screens (each owns its state; see Features/)
+    let projects = ProjectsModel()
+    let orphans = OrphansModel()
+    let duplicates = DuplicatesModel()
+    let aiModels = AIModelsModel()
+    let icloud = ICloudModel()
+    let activity = ActivityModel()
+    let loginItems = LoginItemsModel()
+    let history = HistoryModel()
 
     // MARK: Disks
     var volumes: [VolumeInfo] = []
@@ -110,9 +131,11 @@ final class AppModel {
         Prefs.register()
         cleanupMethod = CleanupMethod(rawValue: UserDefaults.standard.string(forKey: Prefs.cleanupMethod) ?? "") ?? .moveToTrash
 
+        refreshTrashHistory()
         monitorTask = Task { [weak self] in
             while !Task.isCancelled {
                 self?.updateVolume()
+                if let self { await self.history.tick(appModel: self) }
                 try? await Task.sleep(for: .seconds(300))
             }
         }
@@ -125,6 +148,7 @@ final class AppModel {
     /// Refreshes usage for all mounted disks.
     func updateVolume() {
         volumes = VolumeInfo.mounted()
+        history.record(volumes)
         checkLowSpace()
     }
 
@@ -391,6 +415,7 @@ final class AppModel {
                 (category, cleaner.clean(items, in: category, method: method))
             }
         }.value
+        var trashed = [TrashRecord]()
         for (category, report) in reports {
             if category.deletesPermanently || method == .deletePermanently {
                 summary.freed += report.bytesFreed
@@ -398,6 +423,12 @@ final class AppModel {
                 summary.trashed += report.bytesFreed
             }
             summary.failures += report.failures.map { "\($0.item.name): \($0.message)" }
+            trashed += report.trashed
+        }
+        if !trashed.isEmpty {
+            let names = categories.map(\.0.name)
+            let title = names.count == 1 ? names[0] : "Cleanup of \(names.count) categories"
+            summary.undoBatchID = recordTrash(title: title, records: trashed)
         }
 
         for id in toolIDs {
@@ -460,6 +491,7 @@ final class AppModel {
         if report.removed.contains(where: { $0.url == app.url }) {
             apps.removeAll { $0.url == app.url }
         }
+        recordTrash(title: "Uninstalled \(app.name)", records: report.trashed)
         updateVolume()
         return report
     }
@@ -473,8 +505,58 @@ final class AppModel {
             uninstaller.removeLeftovers(leftovers, of: app, method: method)
         }.value
         report.removed.insert(CleanupItem(url: app.url, size: app.size, modified: app.lastUsed), at: 0)
+        // The app itself was moved as root, so only its support files can be put back automatically.
+        recordTrash(title: "Support files of \(app.name)", records: report.trashed)
         updateVolume()
         return report
+    }
+
+    // MARK: - Undo
+
+    /// Batches of items Reclaim moved to the Trash that can still be put back.
+    var trashHistory: [TrashBatch] = []
+
+    /// Records an undoable batch. Feature screens that move files to the Trash should go through this.
+    @discardableResult
+    func recordTrash(title: String, records: [TrashRecord]) -> UUID? {
+        guard !records.isEmpty else { return nil }
+        TrashLedger.shared.record(title: title, records: records)
+        refreshTrashHistory()
+        return trashHistory.first?.id
+    }
+
+    /// Moves one item to the Trash as its own undoable batch.
+    func moveToTrash(_ url: URL, size: Int64, title: String? = nil) throws {
+        let record = try Trash.move(url, size: size)
+        recordTrash(title: title ?? "Moved \(url.lastPathComponent) to the Trash", records: [record])
+        didRemoveFiles()
+    }
+
+    func refreshTrashHistory() {
+        trashHistory = TrashLedger.shared.batches()
+    }
+
+    /// Puts a batch back where it came from, then rescans.
+    func putBack(_ batchID: UUID) async {
+        let result = await Task.detached(priority: .userInitiated) {
+            TrashLedger.shared.putBack(batchID)
+        }.value
+        refreshTrashHistory()
+        if !result.failures.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "\(result.failures.count) items couldn't be put back"
+            alert.informativeText = result.failures.prefix(5).map { "\($0.record.name): \($0.message)" }.joined(separator: "\n")
+            alert.runModal()
+        }
+        updateVolume()
+        if lastScanDate != nil { await scanCategories() }
+        if appsLoaded { await loadApps() }
+    }
+
+    /// Call after removing files outside the normal cleanup flow, so disk usage stays current.
+    func didRemoveFiles() {
+        updateVolume()
+        refreshTrashHistory()
     }
 
     // MARK: - Explorer
@@ -528,7 +610,7 @@ final class AppModel {
 
     func trashExplorerEntry(_ entry: FolderEntry) {
         do {
-            try FileManager.default.trashItem(at: entry.url, resultingItemURL: nil)
+            try moveToTrash(entry.url, size: entry.size ?? 0)
             explorerEntries.removeAll { $0.url == entry.url }
             // Sizes of this folder and its ancestors are now stale.
             explorerCache = explorerCache.filter { !explorerFolder.normalizedPath.hasPrefix($0.key.normalizedPath) }
@@ -629,7 +711,7 @@ final class AppModel {
 
     func trashLargeFile(_ item: CleanupItem) {
         do {
-            try FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
+            try moveToTrash(item.url, size: item.size)
             largeFiles.removeAll { $0.url == item.url }
             updateVolume()
         } catch {

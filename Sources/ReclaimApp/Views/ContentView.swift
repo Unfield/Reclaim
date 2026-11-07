@@ -28,6 +28,9 @@ struct ContentView: View {
             isPresented: Binding(get: { model.lastReport != nil }, set: { if !$0 { model.lastReport = nil } }),
             presenting: model.lastReport
         ) { report in
+            if let batchID = report.undoBatchID {
+                Button("Undo") { Task { await model.putBack(batchID) } }
+            }
             if report.trashed > 0 {
                 Button("Empty Trash", role: .destructive) { Task { await model.emptyTrash() } }
             }
@@ -58,6 +61,24 @@ struct ContentView: View {
             LargeFilesView()
         case .memory:
             MemoryView()
+        case .projects:
+            ProjectsView()
+        case .orphans:
+            OrphansView()
+        case .duplicates:
+            DuplicatesView()
+        case .aiModels:
+            AIModelsView()
+        case .icloud:
+            ICloudView()
+        case .activity:
+            ActivityView()
+        case .loginItems:
+            LoginItemsView()
+        case .history:
+            HistoryView()
+        case .recentlyRemoved:
+            RecentlyRemovedView()
         case .overview, nil:
             OverviewView()
         }
@@ -83,6 +104,8 @@ struct ContentView: View {
 
 private struct Sidebar: View {
     @Environment(AppModel.self) private var model
+    /// Collapsed sidebar sections, remembered across launches.
+    @AppStorage("collapsedSidebarSections") private var collapsedStorage = ""
 
     var body: some View {
         @Bindable var model = model
@@ -91,41 +114,70 @@ private struct Sidebar: View {
             Label("Overview", systemImage: "gauge.with.dots.needle.33percent")
                 .badge(badge(model.totalReclaimable))
                 .tag(SidebarItem.overview)
-            Label("Memory", systemImage: "memorychip")
-                .tag(SidebarItem.memory)
+            Label("Recently Removed", systemImage: "arrow.uturn.backward.circle")
+                .badge(model.trashHistory.isEmpty ? nil : Text("\(model.trashHistory.count)"))
+                .tag(SidebarItem.recentlyRemoved)
 
             ForEach(CategoryGroup.allCases, id: \.self) { group in
                 let scans = model.scans.filter { $0.category.group == group }
                 if !scans.isEmpty {
-                    Section(group.rawValue) {
+                    Section(isExpanded: expanded(group.rawValue)) {
                         ForEach(scans) { scan in
                             Label(scan.category.name, systemImage: scan.category.symbolName)
                                 .badge(badge(scan.totalSize))
                                 .tag(SidebarItem.category(scan.id))
                         }
+                    } header: {
+                        Text(group.rawValue)
                     }
                 }
             }
 
             if !model.visibleTools.isEmpty {
-                Section("Maintenance") {
+                Section(isExpanded: expanded("Maintenance")) {
                     ForEach(model.visibleTools, id: \.id) { tool in
                         Label(tool.name, systemImage: ToolSymbols.name(for: tool.id))
                             .badge(badge(model.toolReclaimable(tool.id)))
                             .tag(SidebarItem.tool(tool.id))
                     }
+                } header: {
+                    Text("Maintenance")
                 }
             }
 
-            Section("Space") {
-                Label("Applications", systemImage: "square.grid.2x2")
-                    .tag(SidebarItem.apps)
-                Label("Space Explorer", systemImage: "chart.bar.doc.horizontal")
-                    .tag(SidebarItem.explorer)
-                Label("Large Files", systemImage: "doc.text.magnifyingglass")
-                    .tag(SidebarItem.largeFiles)
+            Section(isExpanded: expanded("Find & Remove")) {
+                Label("Applications", systemImage: "square.grid.2x2").tag(SidebarItem.apps)
+                Label("App Leftovers", systemImage: "questionmark.folder").tag(SidebarItem.orphans)
+                Label("Developer Projects", systemImage: "hammer").tag(SidebarItem.projects)
+                Label("Duplicates", systemImage: "doc.on.doc").tag(SidebarItem.duplicates)
+                Label("AI Models", systemImage: "brain").tag(SidebarItem.aiModels)
+                Label("iCloud Drive", systemImage: "icloud").tag(SidebarItem.icloud)
+                Label("Large Files", systemImage: "doc.text.magnifyingglass").tag(SidebarItem.largeFiles)
+                Label("Space Explorer", systemImage: "chart.bar.doc.horizontal").tag(SidebarItem.explorer)
+            } header: {
+                Text("Find & Remove")
+            }
+
+            Section(isExpanded: expanded("Monitor")) {
+                Label("Memory", systemImage: "memorychip").tag(SidebarItem.memory)
+                Label("CPU & Energy", systemImage: "cpu").tag(SidebarItem.activity)
+                Label("Login Items", systemImage: "power").tag(SidebarItem.loginItems)
+                Label("Disk History", systemImage: "chart.xyaxis.line").tag(SidebarItem.history)
+            } header: {
+                Text("Monitor")
             }
         }
+    }
+
+    private func expanded(_ section: String) -> Binding<Bool> {
+        Binding(
+            get: { !collapsedStorage.split(separator: "|").contains(Substring(section)) },
+            set: { isExpanded in
+                var collapsed = Set(collapsedStorage.split(separator: "|").map(String.init))
+                if isExpanded { collapsed.remove(section) } else { collapsed.insert(section) }
+                collapsedStorage = collapsed.sorted().joined(separator: "|")
+            }
+        )
     }
 
     private func badge(_ bytes: Int64?) -> Text? {

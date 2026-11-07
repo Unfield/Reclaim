@@ -188,7 +188,7 @@ public struct AppUninstaller: Sendable {
 
         do {
             try validate(app)
-            try remove(app.url, method: method)
+            if let record = try remove(app.url, size: app.size, method: method) { report.trashed.append(record) }
             report.removed.append(appItem)
         } catch {
             report.failures.append(CleanupFailure(item: appItem, message: error.localizedDescription))
@@ -198,6 +198,7 @@ public struct AppUninstaller: Sendable {
         let leftoverReport = removeLeftovers(leftovers, of: app, method: method)
         report.removed += leftoverReport.removed
         report.failures += leftoverReport.failures
+        report.trashed += leftoverReport.trashed
         return report
     }
 
@@ -210,7 +211,7 @@ public struct AppUninstaller: Sendable {
                 guard allowed.contains(item.url.normalizedPath) else {
                     throw UninstallError.notAllowed("\(item.url.abbreviatedPath) isn't a recognized support file for \(app.name).")
                 }
-                try remove(item.url, method: method)
+                if let record = try remove(item.url, size: item.size, method: method) { report.trashed.append(record) }
                 report.removed.append(item)
             } catch {
                 report.failures.append(CleanupFailure(item: item, message: error.localizedDescription))
@@ -236,10 +237,14 @@ public struct AppUninstaller: Sendable {
         guard result.succeeded else { throw ShellError.failed(command: "mv", message: result.failureMessage) }
     }
 
-    private func remove(_ url: URL, method: CleanupMethod) throws {
+    /// Returns a Trash record when the item was moved to the Trash (so it can be put back).
+    private func remove(_ url: URL, size: Int64, method: CleanupMethod) throws -> TrashRecord? {
         switch method {
-        case .moveToTrash: try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-        case .deletePermanently: try FileManager.default.removeItem(at: url)
+        case .moveToTrash:
+            return try Trash.move(url, size: size)
+        case .deletePermanently:
+            try FileManager.default.removeItem(at: url)
+            return nil
         }
     }
 }

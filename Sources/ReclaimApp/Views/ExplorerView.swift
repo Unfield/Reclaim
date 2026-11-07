@@ -5,6 +5,7 @@ struct ExplorerView: View {
     @Environment(AppModel.self) private var model
     @State private var selection: FolderEntry.ID?
     @State private var pendingTrash: FolderEntry?
+    @AppStorage("explorerShowsTreemap") private var showsTreemap = false
 
     var body: some View {
         let entries = model.explorerEntries
@@ -16,6 +17,10 @@ struct ExplorerView: View {
                 ContentUnavailableView("Can't Open Folder", systemImage: "lock", description: Text(error))
             } else if entries.isEmpty {
                 ContentUnavailableView("Empty Folder", systemImage: "folder")
+            } else if showsTreemap {
+                TreemapView(entries: entries, selection: $selection) { entry in
+                    if entry.isFolder { model.explore(entry.url) } else { AppModel.revealInFinder(entry.url) }
+                }
             } else {
                 Table(entries, selection: $selection) {
                     TableColumn("Name") { entry in
@@ -78,6 +83,14 @@ struct ExplorerView: View {
                 LocationMenu(current: model.explorerFolder) { model.explore($0) }
 
                 Spacer()
+
+                Picker("View", selection: $showsTreemap) {
+                    Image(systemName: "list.bullet").help("List").tag(false)
+                    Image(systemName: "square.grid.3x3.square").help("Treemap").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
 
                 Button {
                     model.explore(model.explorerFolder, useCache: false)

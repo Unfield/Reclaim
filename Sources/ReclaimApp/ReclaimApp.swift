@@ -46,6 +46,17 @@ struct ReclaimApp: App {
                 Button("Space Explorer") { model.selection = .explorer }.keyboardShortcut("3")
                 Button("Large Files") { model.selection = .largeFiles }.keyboardShortcut("4")
                 Button("Memory") { model.selection = .memory }.keyboardShortcut("5")
+                Button("Developer Projects") { model.selection = .projects }.keyboardShortcut("6")
+                Button("Duplicates") { model.selection = .duplicates }.keyboardShortcut("7")
+                Button("Disk History") { model.selection = .history }.keyboardShortcut("8")
+            }
+            // Kept separate from the system Undo so ⌘Z keeps working in text fields.
+            CommandGroup(after: .undoRedo) {
+                Button("Put Back “\(model.trashHistory.first?.title ?? "Last Cleanup")”") {
+                    if let batch = model.trashHistory.first { Task { await model.putBack(batch.id) } }
+                }
+                .keyboardShortcut("z", modifiers: [.command, .option])
+                .disabled(model.trashHistory.isEmpty)
             }
             CommandGroup(replacing: .help) {
                 Link("Reclaim on GitHub", destination: ReclaimInfo.repositoryURL)

@@ -111,10 +111,60 @@ public enum CategoryCatalog {
                     path(".cargo/registry/cache"),
                     path(".cache"),
                     path("Library/pnpm/store"),
-                ]
+                ],
+                // AI models are large and deliberate downloads; they're managed on the AI Models screen.
+                excludedNames: ["huggingface", "lm-studio", "torch"]
+            ),
+            CleanupCategory(
+                id: "android-images",
+                name: "Android Emulator Images",
+                summary: "System images used by the Android emulator. Re-downloaded by Android Studio when needed.",
+                group: .developer,
+                safety: .review,
+                roots: [path("Library/Android/sdk/system-images"), path(".android/cache")]
+            ),
+            CleanupCategory(
+                id: "jetbrains-old-versions",
+                name: "Old JetBrains IDE Data",
+                summary: "Settings and indexes left behind by older versions of IntelliJ, PyCharm, WebStorm and friends.",
+                group: .developer,
+                safety: .review,
+                roots: [path("Library/Application Support/JetBrains")],
+                selector: .olderVersions(pattern: #"([A-Za-z]+)(\d{4}\.\d+)"#)
+            ),
+            CleanupCategory(
+                id: "editor-old-extensions",
+                name: "Old Editor Extensions",
+                summary: "Outdated versions of VS Code, Cursor and Windsurf extensions that were kept after updating.",
+                group: .developer,
+                safety: .safe,
+                roots: [path(".vscode/extensions"), path(".cursor/extensions"), path(".windsurf/extensions")],
+                selector: .olderVersions(pattern: #"(.+?)-(\d+\.\d+\.\d+.*)"#)
+            ),
+            CleanupCategory(
+                id: "unity-cache",
+                name: "Unity Cache",
+                summary: "Downloaded Asset Store packages and the global Unity cache.",
+                group: .developer,
+                safety: .review,
+                roots: [path("Library/Unity/cache"), path("Library/Unity/Asset Store-5.x")]
             ),
 
             // MARK: Personal
+            CleanupCategory(
+                id: "installers",
+                name: "Leftover Installers",
+                summary: "Disk images, installer packages, iOS firmware and macOS installers you've probably already used.",
+                group: .personal,
+                safety: .review,
+                roots: [
+                    path("Downloads"),
+                    URL(filePath: "/Applications", directoryHint: .isDirectory),
+                    path("Library/iTunes/iPhone Software Updates"),
+                    path("Library/iTunes/iPad Software Updates"),
+                ],
+                selector: .matching(NameFilter(extensions: Self.installerExtensions, patterns: [Self.macOSInstallerPattern]))
+            ),
             CleanupCategory(
                 id: "old-downloads",
                 name: "Old Downloads",
@@ -122,10 +172,15 @@ public enum CategoryCatalog {
                 group: .personal,
                 safety: .caution,
                 roots: [path("Downloads")],
-                minimumAge: TimeInterval(oldDownloadsDays) * day
+                minimumAge: TimeInterval(oldDownloadsDays) * day,
+                // Installers are listed under Leftover Installers instead.
+                selector: .matching(NameFilter(excludedExtensions: Self.installerExtensions, excludedPatterns: [Self.macOSInstallerPattern]))
             ),
         ]
     }
+
+    static let installerExtensions: Set<String> = ["dmg", "pkg", "mpkg", "ipsw", "xip"]
+    static let macOSInstallerPattern = #"Install macOS .+\.app"#
 
     public static func category(withID id: String, home: URL = FileManager.default.homeDirectoryForCurrentUser) -> CleanupCategory? {
         all(home: home).first { $0.id == id }

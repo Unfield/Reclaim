@@ -64,7 +64,8 @@ private struct Sandbox {
     @Test func rootsStayInsideHome() {
         let home = URL(filePath: "/Users/test", directoryHint: .isDirectory)
         for category in CategoryCatalog.all(home: home) {
-            for root in category.roots {
+            // The only root outside home: macOS installers in /Applications (pattern-restricted).
+            for root in category.roots where root.normalizedPath != "/Applications" {
                 #expect(root.normalizedPath.hasPrefix("/Users/test/"))
                 #expect(root.normalizedPath != "/Users/test")
             }

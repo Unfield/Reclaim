@@ -9,6 +9,10 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             MenuBarSettings()
                 .tabItem { Label("Menu Bar", systemImage: "menubar.rectangle") }
+            ScheduleSettingsView()
+                .tabItem { Label("Schedule", systemImage: "calendar.badge.clock") }
+            ExclusionsSettings()
+                .tabItem { Label("Exclusions", systemImage: "nosign") }
             PrivacySettings()
                 .tabItem { Label("Privacy", systemImage: "hand.raised") }
         }
@@ -113,6 +117,70 @@ private struct MenuBarSettings: View {
         }
         .formStyle(.grouped)
         .onChange(of: thresholdGB) { model.updateVolume() }
+    }
+}
+
+/// Paths Reclaim must never clean. Applies to the app and the CLI.
+struct ExclusionsSettings: View {
+    @Environment(AppModel.self) private var model
+    @State private var exclusions = Exclusions.load()
+    @State private var selection: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Reclaim never cleans these files and folders, or anything inside them.")
+                .foregroundStyle(.secondary)
+            List(selection: $selection) {
+                if exclusions.paths.isEmpty {
+                    Text("No exclusions").foregroundStyle(.secondary)
+                }
+                ForEach(exclusions.paths, id: \.self) { path in
+                    HStack {
+                        FileIcon(url: URL(filePath: path))
+                        Text((path as NSString).abbreviatingWithTildeInPath)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+            }
+            .frame(minHeight: 180)
+            HStack {
+                Button {
+                    add()
+                } label: {
+                    Image(systemName: "plus")
+                }
+                Button {
+                    if let selection { update { $0.remove(selection) } }
+                } label: {
+                    Image(systemName: "minus")
+                }
+                .disabled(selection == nil)
+                Spacer()
+                Text("Tip: right-click an item in a category and choose “Never Clean This”.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(20)
+        .onAppear { exclusions = Exclusions.load() }
+    }
+
+    private func add() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = true
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Caches")
+        panel.prompt = "Exclude"
+        guard panel.runModal() == .OK else { return }
+        update { exclusions in panel.urls.forEach { exclusions.add($0) } }
+    }
+
+    private func update(_ change: (inout Exclusions) -> Void) {
+        change(&exclusions)
+        try? exclusions.save()
+        Task { await model.scanCategories() }
     }
 }
 

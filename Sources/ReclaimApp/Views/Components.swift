@@ -18,6 +18,11 @@ extension CleanupCategory {
     var symbolName: String {
         if group == .otherDisks { return "trash" }
         switch id {
+        case "android-images": return "apps.iphone"
+        case "jetbrains-old-versions": return "curlybraces"
+        case "editor-old-extensions": return "puzzlepiece.extension"
+        case "unity-cache": return "cube.transparent"
+        case "installers": return "shippingbox.and.arrow.backward"
         case "user-caches": return "archivebox"
         case "user-logs": return "doc.plaintext"
         case "trash": return "trash"
@@ -40,6 +45,7 @@ enum ToolSymbols {
         case "homebrew": "mug"
         case "docker": "shippingbox"
         case "time-machine": "clock.arrow.circlepath"
+        case "xcode-simulators": "iphone.gen3"
         default: "wrench.and.screwdriver"
         }
     }
@@ -92,6 +98,12 @@ enum ChartPalette {
         "old-downloads": .red,
         "time-machine": .purple,
         "trash": .gray,
+        "xcode-simulators": .indigo,
+        "android-images": .green,
+        "jetbrains-old-versions": .pink,
+        "editor-old-extensions": .blue,
+        "unity-cache": .gray,
+        "installers": .yellow,
     ]
 
     static func color(for id: String) -> Color {
@@ -304,10 +316,14 @@ struct DiskRow: View {
                 }
                 DiskUsageBar(volume: volume, height: compact ? 5 : 8)
                 if !compact {
-                    Text("\(ByteSize.format(volume.usedCapacity)) of \(ByteSize.format(volume.totalCapacity)) used" + (volume.purgeableCapacity > 0 ? " · \(ByteSize.format(volume.purgeableCapacity)) purgeable" : ""))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                    HStack {
+                        Text("\(ByteSize.format(volume.usedCapacity)) of \(ByteSize.format(volume.totalCapacity)) used" + (volume.purgeableCapacity > 0 ? " · \(ByteSize.format(volume.purgeableCapacity)) purgeable" : ""))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                        Spacer()
+                        DiskForecastLabel(volume: volume)
+                    }
+                    .font(.caption)
                 }
             }
             if volume.isEjectable {

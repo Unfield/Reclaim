@@ -33,6 +33,20 @@ let usage = """
       --limit <n>                    Maximum number of results (default: 25)
       --hidden                       Include hidden files and folders
 
+\(Style.bold("MORE TOOLS"))
+\(projectsUsage)
+\(leftoversUsage)
+\(duplicatesUsage)
+\(modelsUsage)
+\(icloudUsage)
+\(cpuUsage)
+\(loginItemsUsage)
+\(historyUsage)
+  reclaim undo                       Put back the last items Reclaim moved to the Trash
+      --list                         Show what can be put back
+  reclaim exclude [path]             Never clean this path (no path: list exclusions)
+      --remove                       Remove the path from the exclusion list
+
   reclaim --version                  Print the version
 
 Tip: grant your terminal Full Disk Access (System Settings → Privacy & Security)
@@ -522,13 +536,66 @@ func runLarge(_ args: Arguments) throws {
     }
 }
 
+// MARK: - undo / exclude
+
+func runUndo(_ args: Arguments) async throws {
+    let batches = TrashLedger.shared.batches()
+    guard let latest = batches.first else {
+        print("Nothing to put back.")
+        return
+    }
+    if args.has("list") {
+        for batch in batches {
+            print("\(Style.bold(batch.title))  \(Style.dim("\(batch.date.formatted(date: .abbreviated, time: .shortened)) · \(batch.records.count) items · \(ByteSize.format(batch.totalSize))"))")
+        }
+        return
+    }
+    print("Put back \(Style.bold(latest.title)) (\(latest.records.count) items, \(ByteSize.format(latest.totalSize)))?")
+    if !args.has("yes", "y") {
+        guard confirm("Proceed?") else {
+            print("Cancelled.")
+            return
+        }
+    }
+    let result = TrashLedger.shared.putBack(latest.id)
+    for failure in result.failures {
+        print(Style.yellow("  Couldn't put back \(failure.record.name): \(failure.message)"))
+    }
+    print(Style.green("✓ Put back \(result.restored.count) items"))
+}
+
+func runExclude(_ args: Arguments) throws {
+    var exclusions = Exclusions.load()
+    guard let path = args.positionals.first else {
+        if exclusions.paths.isEmpty {
+            print("No exclusions. Add one with `reclaim exclude <path>`.")
+        } else {
+            exclusions.paths.forEach { print($0) }
+        }
+        return
+    }
+    let url = URL(filePath: (path as NSString).expandingTildeInPath)
+    if args.has("remove") {
+        exclusions.remove(url.normalizedPath)
+        print("Removed \(url.abbreviatedPath) from exclusions.")
+    } else {
+        exclusions.add(url)
+        print("Reclaim will never clean \(url.abbreviatedPath).")
+    }
+    try exclusions.save()
+}
+
 // MARK: - Entry point
 
 let rawArguments = Array(CommandLine.arguments.dropFirst())
 let command = rawArguments.first ?? "help"
 
 do {
-    let args = try Arguments(Array(rawArguments.dropFirst()), optionsWithValues: ["min", "limit", "days"])
+    let optionsWithValues = Set(["min", "limit", "days"])
+        .union(projectsOptionsWithValues).union(leftoversOptionsWithValues).union(duplicatesOptionsWithValues)
+        .union(modelsOptionsWithValues).union(icloudOptionsWithValues).union(cpuOptionsWithValues)
+        .union(loginItemsOptionsWithValues).union(historyOptionsWithValues)
+    let args = try Arguments(Array(rawArguments.dropFirst()), optionsWithValues: optionsWithValues)
     switch command {
     case "status": try runStatus()
     case "list": runList()
@@ -538,6 +605,16 @@ do {
     case "uninstall": try await runUninstall(args)
     case "explore": try await runExplore(args)
     case "memory", "ram": try await runMemory(args)
+    case "projects": try await runProjects(args)
+    case "leftovers": try await runLeftovers(args)
+    case "duplicates", "dupes": try await runDuplicates(args)
+    case "models": try await runModels(args)
+    case "icloud": try await runIcloud(args)
+    case "cpu": try await runCpu(args)
+    case "login-items": try await runLoginItems(args)
+    case "history": try await runHistory(args)
+    case "undo": try await runUndo(args)
+    case "exclude": try runExclude(args)
     case "large": try runLarge(args)
     case "help", "-h", "--help": print(usage)
     case "version", "--version", "-v": print("reclaim \(ReclaimInfo.version)")

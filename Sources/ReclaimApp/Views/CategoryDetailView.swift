@@ -46,6 +46,13 @@ struct CategoryDetailView: View {
                     Divider()
                     Button("Check Selected") { setChecked(true, urls) }
                     Button("Uncheck Selected") { setChecked(false, urls) }
+                    Divider()
+                    Button("Never Clean This") {
+                        var exclusions = Exclusions.load()
+                        urls.forEach { exclusions.add($0) }
+                        try? exclusions.save()
+                        Task { await model.scanCategories() }
+                    }
                 } primaryAction: { urls in
                     urls.forEach(AppModel.revealInFinder)
                 }

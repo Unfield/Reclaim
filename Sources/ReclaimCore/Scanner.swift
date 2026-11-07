@@ -4,8 +4,10 @@ import Foundation
 public struct Scanner: Sendable {
     private let sizer = DirectorySizer()
     private let now: @Sendable () -> Date
+    private let exclusions: Exclusions
 
-    public init(now: @escaping @Sendable () -> Date = { Date() }) {
+    public init(exclusions: Exclusions = .load(), now: @escaping @Sendable () -> Date = { Date() }) {
+        self.exclusions = exclusions
         self.now = now
     }
 
@@ -54,8 +56,12 @@ public struct Scanner: Sendable {
                 continue
             }
 
+            let selected = category.selector.select(children.map(\.lastPathComponent))
             for child in children
-            where child.lastPathComponent != ".DS_Store" && !category.excludedNames.contains(child.lastPathComponent) {
+            where child.lastPathComponent != ".DS_Store"
+                && !category.excludedNames.contains(child.lastPathComponent)
+                && selected.contains(child.lastPathComponent)
+                && !exclusions.excludes(child) {
                 let modified = try? child.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
                 if let cutoff, let modified, modified > cutoff { continue }
 

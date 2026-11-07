@@ -54,6 +54,8 @@ public struct CleanupCategory: Identifiable, Sendable, Hashable {
     public let deletesPermanently: Bool
     /// Names of direct children that are never included (e.g. handled by a dedicated tool instead).
     public let excludedNames: Set<String>
+    /// Which direct children count as items.
+    public let selector: ItemSelector
 
     public init(
         id: String,
@@ -64,7 +66,8 @@ public struct CleanupCategory: Identifiable, Sendable, Hashable {
         roots: [URL],
         minimumAge: TimeInterval? = nil,
         deletesPermanently: Bool = false,
-        excludedNames: Set<String> = []
+        excludedNames: Set<String> = [],
+        selector: ItemSelector = .allChildren
     ) {
         self.id = id
         self.name = name
@@ -75,6 +78,7 @@ public struct CleanupCategory: Identifiable, Sendable, Hashable {
         self.minimumAge = minimumAge
         self.deletesPermanently = deletesPermanently
         self.excludedNames = excludedNames
+        self.selector = selector
     }
 }
 

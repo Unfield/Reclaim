@@ -98,7 +98,7 @@ extension MaintenanceTool {
 
 public enum ToolCatalog {
     public static func all() -> [any MaintenanceTool] {
-        [HomebrewTool(), DockerTool(), TimeMachineTool()]
+        [HomebrewTool(), DockerTool(), XcodeSimulatorsTool(), TimeMachineTool()]
     }
 
     public static func tool(withID id: String) -> (any MaintenanceTool)? {
