@@ -49,7 +49,7 @@ It's a universal app for Apple silicon and Intel and needs macOS 14 or later. It
 - **Scheduled cleanup:** clean Safe items daily, weekly or monthly, with an optional weekly summary.
 
 **Find & remove**
-- **App uninstaller:** finds apps you haven't opened in months and removes them along with their support files. You can also drag an app onto Reclaim or its Dock icon.
+- **App uninstaller:** finds apps you haven't opened in months and removes them along with their support files. You can also drag an app onto Reclaim or its Dock icon. Xcode is removed completely, including simulators, simulator runtimes and `~/Library/Developer` data.
 - **App leftovers:** data left behind by apps that are no longer installed.
 - **Developer projects:** `node_modules`, `target`, `.venv`, `.build`, Gradle and Pods folders in projects you haven't touched in a while.
 - **Duplicates:** identical files, verified with SHA-256. At least one copy is always kept.
@@ -89,7 +89,7 @@ Reclaim is careful by design:
 
 - **Files go to the Trash by default.** Permanent deletion is opt-in.
 - Category cleanup only removes items **directly inside** known cache and data folders. It never removes the folders themselves or anything outside them.
-- The uninstaller only touches `.app` bundles in Applications folders and support files matched by **exact bundle ID** in `~/Library`. Apple apps are never offered.
+- The uninstaller only touches `.app` bundles in Applications folders and support files matched by **exact bundle ID** in `~/Library`. Apple apps are never offered, except Xcode, which is a separate download. Its simulator runtimes are deleted with Xcode's own `simctl`.
 - Tool cleanups (Homebrew, Docker, tmutil) use **each tool's own commands**.
 - Everything Reclaim moves to the Trash is logged, so you can **put it back** until you empty the Trash.
 - Nothing runs as root unless you approve the standard macOS password prompt.
@@ -106,6 +106,7 @@ reclaim clean --all-safe --dry-run   # preview
 reclaim clean xcode-derived-data docker --all-images
 reclaim apps --days 180              # apps unused for 6 months
 reclaim uninstall "Some App"         # app + support files to the Trash
+reclaim uninstall Xcode --dry-run    # everything removing Xcode would free
 reclaim explore ~/Library            # what's using space here
 reclaim large / --min 2GB            # big files anywhere
 reclaim memory                       # memory pressure + heaviest apps

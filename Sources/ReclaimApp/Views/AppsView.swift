@@ -187,8 +187,22 @@ struct UninstallSheet: View {
     @State private var needsAdministrator = false
     @State private var errorMessage: String?
 
+    // Xcode only: it's removed completely, including simulator runtimes, which live outside the app.
+    @State private var xcodeInfo: AppModel.XcodeRemovalInfo?
+    @State private var includeRuntimes = true
+    @State private var xcodePrepared = false
+    @State private var xcodeNotes: [AppModel.XcodeRemovalNote] = []
+
     private var chosenLeftovers: [CleanupItem] {
         (leftovers ?? []).filter { selectedLeftovers.contains($0.url) }
+    }
+
+    private var chosenRuntimes: [XcodeSimulatorsTool.Runtime] {
+        includeRuntimes ? xcodeInfo?.runtimes ?? [] : []
+    }
+
+    private var isReady: Bool {
+        leftovers != nil && (!app.isXcode || xcodeInfo != nil)
     }
 
     private var total: Int64 {
@@ -258,7 +272,7 @@ struct UninstallSheet: View {
                     Button("Move \(ByteSize.format(total)) to Trash") { Task { await uninstall() } }
                         .primaryButtonStyle()
                         .keyboardShortcut(.defaultAction)
-                        .disabled(isWorking || isRunning || leftovers == nil)
+                        .disabled(isWorking || isRunning || !isReady)
                 }
             }
             .controlSize(.large)
@@ -267,6 +281,7 @@ struct UninstallSheet: View {
         .frame(width: 580)
         .task {
             isRunning = AppModel.isRunning(app)
+            if app.isXcode { xcodeInfo = await model.xcodeRemovalInfo(for: app) }
             let found = await model.leftovers(for: app)
             leftovers = found
             selectedLeftovers = Set(found.map(\.url))
@@ -280,6 +295,10 @@ struct UninstallSheet: View {
                     Image(systemName: "checkmark.square.fill").foregroundStyle(.tint)
                 }
                 Divider()
+                if let runtimes = xcodeInfo?.runtimes, !runtimes.isEmpty {
+                    runtimesRow(runtimes)
+                    Divider()
+                }
                 ScrollView {
                     VStack(spacing: 0) {
                         if let leftovers {
@@ -312,10 +331,58 @@ struct UninstallSheet: View {
                 }
                 .frame(height: 200)
             }
-            Text("Support files are settings, caches and data the app stored in your Library. Uncheck anything you want to keep.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if app.isXcode {
+                xcodeNotice
+            } else {
+                Text("Support files are settings, caches and data the app stored in your Library. Uncheck anything you want to keep.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
+    }
+
+    private func runtimesRow(_ runtimes: [XcodeSimulatorsTool.Runtime]) -> some View {
+        HStack(spacing: 10) {
+            Toggle("", isOn: $includeRuntimes)
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Simulator runtimes")
+                Text(runtimes.map(\.displayName).joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            Spacer(minLength: 12)
+            let sizes = runtimes.compactMap(\.sizeBytes)
+            if !sizes.isEmpty {
+                SizeText(bytes: sizes.reduce(0, +)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .help("Simulator runtimes are installed outside Xcode. They're deleted right away and can't be put back.")
+    }
+
+    private var xcodeNotice: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let others = xcodeInfo?.otherInstallations, !others.isEmpty {
+                Text("Another copy of Xcode is installed (\(others.map(\.abbreviatedPath).joined(separator: ", "))), so shared settings, simulators and simulator runtimes are kept.")
+            } else {
+                Text("Removes Xcode completely: simulators, DerivedData, archives, device support files and settings. Archives are needed to symbolicate crash reports of builds you've shipped. Uncheck anything you want to keep.")
+                if !(xcodeInfo?.runtimes.isEmpty ?? true) {
+                    Text("Simulator runtimes are deleted right away and can't be put back.")
+                }
+            }
+            if xcodeInfo?.isActiveDeveloperDirectory == true {
+                Text("This Xcode is the active developer directory. Afterwards, Reclaim resets it so command line tools like git keep working. You'll be asked for an administrator password.")
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func fileRow<Leading: View>(path: String, size: Int64, @ViewBuilder leading: () -> Leading) -> some View {
@@ -341,6 +408,12 @@ struct UninstallSheet: View {
                     .foregroundStyle(.red)
                     .font(.callout)
             }
+            ForEach(xcodeNotes) { note in
+                Label(note.text, systemImage: note.isFailure ? "xmark.circle" : "checkmark.circle.fill")
+                    .foregroundStyle(note.isFailure ? .red : .green)
+                    .font(note.isFailure ? .callout : .body)
+                    .textSelection(.enabled)
+            }
             if needsAdministrator {
                 Text("\(app.name) is owned by another user. You can move it to the Trash with an administrator password.")
                     .font(.callout)
@@ -353,20 +426,42 @@ struct UninstallSheet: View {
     private func uninstall() async {
         isWorking = true
         defer { isWorking = false }
+        if app.isXcode {
+            // Runtimes can only be deleted with Xcode's own tools. Don't touch them unless Xcode can be removed afterwards.
+            if AppUninstaller().needsAdministrator(app) {
+                result = CleanupReport(dryRun: false)
+                needsAdministrator = true
+                return
+            }
+            await prepareXcodeRemoval()
+        }
         let report = await model.uninstall(app, leftovers: chosenLeftovers)
         result = report
         needsAdministrator = report.failures.contains { $0.item.url == app.url }
+        if app.isXcode, !needsAdministrator { await finishXcodeRemoval() }
     }
 
     private func uninstallAsAdministrator() async {
         isWorking = true
         defer { isWorking = false }
         do {
+            if app.isXcode { await prepareXcodeRemoval() }
             result = try await model.uninstallAsAdministrator(app, leftovers: chosenLeftovers)
             needsAdministrator = false
             errorMessage = nil
+            if app.isXcode { await finishXcodeRemoval() }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func prepareXcodeRemoval() async {
+        guard !xcodePrepared else { return }
+        xcodePrepared = true
+        xcodeNotes += await model.prepareXcodeRemoval(app, deleting: chosenRuntimes)
+    }
+
+    private func finishXcodeRemoval() async {
+        xcodeNotes += await model.finishXcodeRemoval(resetDeveloperDirectory: xcodeInfo?.isActiveDeveloperDirectory == true)
     }
 }

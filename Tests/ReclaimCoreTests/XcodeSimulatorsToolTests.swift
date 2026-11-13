@@ -191,6 +191,8 @@ import Testing
         #expect(XcodeSimulatorsTool.compareVersions("16.4", "17.0") == .orderedAscending)
         #expect(XcodeSimulatorsTool.platformName(fromRuntimeIdentifier: "com.apple.CoreSimulator.SimRuntime.iOS-17-0") == "iOS 17.0")
         #expect(XcodeSimulatorsTool.platformName(fromRuntimeIdentifier: "com.apple.CoreSimulator.SimRuntime.xrOS-2-1") == "visionOS 2.1")
+        #expect(XcodeSimulatorsTool.platformName(fromRuntimeIdentifier: "com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4") == "iOS 27.2")
+        #expect(XcodeSimulatorsTool.platformName(fromRuntimeIdentifier: "com.apple.CoreSimulator.SimRuntime.iOS-beta") == nil)
         #expect(XcodeSimulatorsTool.platformName(fromRuntimeIdentifier: "iOS 12.1") == nil)
     }
 

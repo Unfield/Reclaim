@@ -21,6 +21,7 @@ let usage = """
       --days <n>                     Unused for at least n days (default: 90)
       --all                          List all apps, largest first
   reclaim uninstall <app>            Move an app and its support files to the Trash
+                                     (Xcode is removed completely, including simulators and runtimes)
       --keep-data                    Only remove the app, not its support files
       -n, --dry-run / -y, --yes
   reclaim memory                     Show memory usage, pressure and the heaviest apps
@@ -292,8 +293,14 @@ func runClean(_ args: Arguments) async throws {
     }
     print("  \(Style.bold(sizeColumn(total)))  total")
 
-    let risky = scans.map(\.category).filter { $0.safety == .caution }.map(\.name)
-        + tools.flatMap { tool, _ in tool.options.filter { toolOptions(for: tool, args).contains($0.id) && $0.safety == .caution }.map { "\(tool.name) \($0.title.lowercased())" } }
+    let riskyCategories: [String] = scans.map(\.category).filter { $0.safety == .caution }.map(\.name)
+    let riskyOptions: [String] = tools.flatMap { tool, _ -> [String] in
+        let options = toolOptions(for: tool, args)
+        return tool.options
+            .filter { options.contains($0.id) && $0.safety == .caution }
+            .map { "\(tool.name) \($0.title.lowercased())" }
+    }
+    let risky = riskyCategories + riskyOptions
     if !risky.isEmpty {
         print(Style.red("\nWarning: \(risky.joined(separator: ", ")) may contain data you care about."))
     }
@@ -412,24 +419,62 @@ func runUninstall(_ args: Arguments) async throws {
     }
 
     let leftovers = args.has("keep-data") ? [] : inventory.leftovers(for: app)
+
+    // Xcode is removed completely: its simulator runtimes live outside the app and need Xcode's own tools to delete.
+    let xcode = XcodeUninstaller()
+    var runtimes = [XcodeSimulatorsTool.Runtime]()
+    var otherXcodes = [URL]()
+    var isActiveDeveloperDirectory = false
+    if app.isXcode {
+        otherXcodes = inventory.otherXcodeInstallations(than: app)
+        if !args.has("keep-data") && otherXcodes.isEmpty { runtimes = await xcode.runtimes(for: app.url) }
+        isActiveDeveloperDirectory = await xcode.isActiveDeveloperDirectory(app.url)
+    }
+
     print(Style.bold("\(app.name)") + Style.dim(" \(app.version ?? "") · \(app.bundleID ?? "")"))
     print("  \(sizeColumn(app.size))  \(app.url.abbreviatedPath)")
     for item in leftovers {
         print("  \(sizeColumn(item.size))  \(item.url.abbreviatedPath)")
     }
-    let total = app.size + leftovers.reduce(0) { $0 + $1.size }
+    for runtime in runtimes {
+        print("  \(sizeColumn(runtime.sizeBytes))  Simulator runtime \(runtime.displayName)")
+    }
+    let total = app.size + leftovers.reduce(0) { $0 + $1.size } + runtimes.reduce(0) { $0 + ($1.sizeBytes ?? 0) }
     print("  \(Style.bold(sizeColumn(total)))  total")
+    if !otherXcodes.isEmpty {
+        let paths = otherXcodes.map(\.abbreviatedPath).joined(separator: ", ")
+        print(Style.dim("Another copy of Xcode is installed (\(paths)), so shared settings, simulators and runtimes are kept."))
+    }
 
     if args.has("dry-run", "n") { return }
+    let uninstaller = AppUninstaller(inventory: inventory)
+    if app.isXcode && uninstaller.needsAdministrator(app) {
+        throw UsageError("\(app.name) is owned by another user (Xcode from the App Store is owned by root). Remove it with the Reclaim app, which can ask for an administrator password.")
+    }
     if !args.has("yes", "y") {
         print()
-        guard confirm("Move these to the Trash?") else {
+        let question = runtimes.isEmpty
+            ? "Move these to the Trash?"
+            : "Remove these? Simulator runtimes are deleted permanently, everything else is moved to the Trash."
+        guard confirm(question) else {
             print("Cancelled.")
             return
         }
     }
 
-    let uninstaller = AppUninstaller(inventory: inventory)
+    var runtimesFreed: Int64 = 0
+    if app.isXcode {
+        status("Shutting down simulators…")
+        await xcode.shutdownSimulators(using: app.url)
+        if !runtimes.isEmpty { status("Deleting simulator runtimes…") }
+        let (freed, failures) = await xcode.deleteRuntimes(runtimes, using: app.url)
+        clearStatus()
+        runtimesFreed = freed
+        for failure in failures {
+            print(Style.yellow("  Couldn't delete simulator runtime \(failure)"))
+        }
+    }
+
     let report = uninstaller.uninstall(app, leftovers: leftovers, method: .moveToTrash)
     for failure in report.failures {
         print(Style.yellow("  Couldn't remove \(failure.item.url.abbreviatedPath): \(failure.message)"))
@@ -439,6 +484,12 @@ func runUninstall(_ args: Arguments) async throws {
         exit(1)
     }
     print(Style.green("\n✓ Moved \(ByteSize.format(report.bytesFreed)) to the Trash"))
+    if runtimesFreed > 0 {
+        print(Style.green("✓ Deleted \(ByteSize.format(runtimesFreed)) of simulator runtimes"))
+    }
+    if isActiveDeveloperDirectory && report.removed.contains(where: { $0.url == app.url }) {
+        print(Style.yellow("\(app.name) was the active developer directory. Run `sudo xcode-select --reset` so git, clang and other command line tools keep working."))
+    }
 }
 
 // MARK: - memory

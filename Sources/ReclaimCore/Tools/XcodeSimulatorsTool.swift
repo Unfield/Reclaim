@@ -308,12 +308,14 @@ public struct XcodeSimulatorsTool: MaintenanceTool {
         parseRuntimeIdentifier(identifier).map { "\($0.platform) \($0.version)" }
     }
 
-    /// `com.apple.CoreSimulator.SimRuntime.iOS-17-0` → ("iOS", "17.0").
+    /// `com.apple.CoreSimulator.SimRuntime.iOS-17-0` → ("iOS", "17.0"). Device-specific runtimes such as
+    /// `…SimRuntime.iOS-27-2-iPhone19-4` keep just the version.
     static func parseRuntimeIdentifier(_ identifier: String) -> (platform: String, version: String)? {
         guard let suffix = identifier.split(separator: ".").last, !suffix.isEmpty else { return nil }
         let parts = suffix.split(separator: "-")
-        guard let platform = parts.first, parts.count > 1, parts.dropFirst().allSatisfy({ Int($0) != nil }) else { return nil }
-        return (platform == "xrOS" ? "visionOS" : String(platform), parts.dropFirst().joined(separator: "."))
+        let version = parts.dropFirst().prefix { Int($0) != nil }
+        guard let platform = parts.first, !version.isEmpty else { return nil }
+        return (platform == "xrOS" ? "visionOS" : String(platform), version.joined(separator: "."))
     }
 
     /// Compares dotted version strings numerically, so "17.10" > "17.9" and "18" == "18.0".

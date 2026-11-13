@@ -25,7 +25,11 @@ public struct InstalledApp: Identifiable, Sendable, Hashable {
     public var id: URL { url }
 
     /// Apps that ship with macOS. These are never offered for removal.
-    public var isAppleApp: Bool { bundleID?.hasPrefix("com.apple.") ?? false }
+    /// Xcode is Apple's too, but it's a separate (and very large) download, so it can be uninstalled.
+    public var isAppleApp: Bool { (bundleID?.hasPrefix("com.apple.") ?? false) && !isXcode }
+
+    /// Xcode or Xcode-beta.
+    public var isXcode: Bool { bundleID == XcodeUninstaller.bundleID }
 
     /// Most recent sign of use: when it was last opened, or when it was installed if never opened.
     public var lastActivity: Date? { lastUsed ?? dateAdded }
@@ -112,8 +116,10 @@ public struct AppInventory: Sendable {
     /// Places in ~/Library where an app commonly keeps its data, matched by exact bundle ID or app name.
     func leftoverCandidates(for app: InstalledApp) -> [URL] {
         guard !app.isAppleApp else { return [] }
+        // Every copy of Xcode shares the same settings and data, so they stay while another copy is installed.
+        if app.isXcode, !otherXcodeInstallations(than: app).isEmpty { return [] }
         let library = home.appending(path: "Library", directoryHint: .isDirectory)
-        var relative = [String]()
+        var relative = app.isXcode ? XcodeUninstaller.libraryPaths : []
 
         if let id = app.bundleID, id.contains(".") {
             relative += [
@@ -180,6 +186,13 @@ public struct AppUninstaller: Sendable {
         guard inventory.roots.contains(where: { path.hasPrefix($0.normalizedPath + "/") }) else {
             throw UninstallError.notAllowed(String(localized: "\(app.name) isn't in an Applications folder."))
         }
+    }
+
+    /// Whether moving the app needs an administrator password, e.g. because it's owned by root (like Xcode from the App Store).
+    public func needsAdministrator(_ app: InstalledApp) -> Bool {
+        let fileManager = FileManager.default
+        return !fileManager.isWritableFile(atPath: app.url.path(percentEncoded: false))
+            || !fileManager.isWritableFile(atPath: app.url.deletingLastPathComponent().path(percentEncoded: false))
     }
 
     public func uninstall(_ app: InstalledApp, leftovers: [CleanupItem], method: CleanupMethod) -> CleanupReport {

@@ -548,6 +548,73 @@ final class AppModel {
         return report
     }
 
+    // MARK: - Removing Xcode completely
+
+    struct XcodeRemovalInfo {
+        /// Simulator runtimes that can be deleted along with Xcode. Empty while another copy of Xcode is installed.
+        var runtimes: [XcodeSimulatorsTool.Runtime]
+        var otherInstallations: [URL]
+        /// Whether `xcode-select` points into this Xcode, so it needs resetting afterwards.
+        var isActiveDeveloperDirectory: Bool
+    }
+
+    struct XcodeRemovalNote: Identifiable {
+        let id = UUID()
+        let text: String
+        let isFailure: Bool
+    }
+
+    /// What else goes when this copy of Xcode is removed. Must be called while it's still installed.
+    func xcodeRemovalInfo(for app: InstalledApp) async -> XcodeRemovalInfo {
+        let others = await Task.detached(priority: .userInitiated) {
+            AppInventory().otherXcodeInstallations(than: app)
+        }.value
+        let uninstaller = XcodeUninstaller()
+        // Runtimes are shared by every copy of Xcode.
+        let runtimes = others.isEmpty ? await uninstaller.runtimes(for: app.url) : []
+        let isActive = await uninstaller.isActiveDeveloperDirectory(app.url)
+        return XcodeRemovalInfo(runtimes: runtimes, otherInstallations: others, isActiveDeveloperDirectory: isActive)
+    }
+
+    /// The steps that need Xcode's own `simctl`, so they run before the app is removed:
+    /// quits the Simulator, shuts down simulators and deletes the chosen runtimes.
+    func prepareXcodeRemoval(_ app: InstalledApp, deleting runtimes: [XcodeSimulatorsTool.Runtime]) async -> [XcodeRemovalNote] {
+        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.iphonesimulator").forEach { $0.terminate() }
+        let uninstaller = XcodeUninstaller()
+        await uninstaller.shutdownSimulators(using: app.url)
+        guard !runtimes.isEmpty else { return [] }
+
+        let (freed, failures) = await uninstaller.deleteRuntimes(runtimes, using: app.url)
+        var notes = [XcodeRemovalNote]()
+        if failures.count < runtimes.count {
+            let text = freed > 0
+                ? String(localized: "Deleted simulator runtimes (\(ByteSize.format(freed))).")
+                : String(localized: "Deleted simulator runtimes.")
+            notes.append(XcodeRemovalNote(text: text, isFailure: false))
+        }
+        notes += failures.map { XcodeRemovalNote(text: String(localized: "Couldn't delete simulator runtime \($0)"), isFailure: true) }
+        updateVolume()
+        return notes
+    }
+
+    /// Call once Xcode is gone. Resets `xcode-select` if it pointed into the removed Xcode (asks for a password).
+    func finishXcodeRemoval(resetDeveloperDirectory: Bool) async -> [XcodeRemovalNote] {
+        var notes = [XcodeRemovalNote]()
+        if resetDeveloperDirectory {
+            do {
+                try await XcodeUninstaller().resetDeveloperDirectory()
+                notes.append(XcodeRemovalNote(text: String(localized: "Reset the active developer directory, so command line tools keep working."), isFailure: false))
+            } catch {
+                notes.append(XcodeRemovalNote(
+                    text: String(localized: "Couldn't reset the active developer directory. Run `sudo xcode-select --reset` in Terminal so command line tools keep working."),
+                    isFailure: true
+                ))
+            }
+        }
+        await refreshTool("xcode-simulators")
+        return notes
+    }
+
     // MARK: - Undo
 
     /// Batches of items Reclaim moved to the Trash that can still be put back.

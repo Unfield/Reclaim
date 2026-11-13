@@ -785,3 +785,17 @@
 "System Default" = "Systemstandard";
 "Restart Reclaim to switch the language." = "Starte Reclaim neu, um die Sprache zu wechseln.";
 "Restart Now" = "Jetzt neu starten";
+
+/* Uninstalling Xcode completely */
+"Removes Xcode completely: simulators, DerivedData, archives, device support files and settings. Archives are needed to symbolicate crash reports of builds you've shipped. Uncheck anything you want to keep." = "Entfernt Xcode vollständig: Simulatoren, DerivedData, Archive, Gerätesupportdateien und Einstellungen. Archive brauchst du, um Absturzberichte veröffentlichter Builds zu symbolisieren. Entferne das Häkchen bei allem, was du behalten möchtest.";
+"Another copy of Xcode is installed (%@), so shared settings, simulators and simulator runtimes are kept." = "Eine weitere Xcode-Kopie ist installiert (%@). Gemeinsame Einstellungen, Simulatoren und Simulator-Laufzeitumgebungen bleiben deshalb erhalten.";
+"Simulator runtimes" = "Simulator-Laufzeitumgebungen";
+"Simulator runtimes are deleted right away and can't be put back." = "Simulator-Laufzeitumgebungen werden sofort gelöscht und können nicht zurückgelegt werden.";
+"Simulator runtimes are installed outside Xcode. They're deleted right away and can't be put back." = "Simulator-Laufzeitumgebungen sind außerhalb von Xcode installiert. Sie werden sofort gelöscht und können nicht zurückgelegt werden.";
+"This Xcode is the active developer directory. Afterwards, Reclaim resets it so command line tools like git keep working. You'll be asked for an administrator password." = "Dieses Xcode ist das aktive Entwicklerverzeichnis. Danach setzt Reclaim es zurück, damit Befehlszeilenwerkzeuge wie git weiter funktionieren. Du wirst nach einem Administratorpasswort gefragt.";
+"Deleted simulator runtimes (%@)." = "Simulator-Laufzeitumgebungen gelöscht (%@).";
+"Deleted simulator runtimes." = "Simulator-Laufzeitumgebungen gelöscht.";
+"Couldn't delete simulator runtime %@" = "Simulator-Laufzeitumgebung konnte nicht gelöscht werden: %@";
+"Reset the active developer directory, so command line tools keep working." = "Das aktive Entwicklerverzeichnis wurde zurückgesetzt, damit Befehlszeilenwerkzeuge weiter funktionieren.";
+"Couldn't reset the active developer directory. Run `sudo xcode-select --reset` in Terminal so command line tools keep working." = "Das aktive Entwicklerverzeichnis konnte nicht zurückgesetzt werden. Führe `sudo xcode-select --reset` im Terminal aus, damit Befehlszeilenwerkzeuge weiter funktionieren.";
+"Reclaim needs your password to reset the active developer directory." = "Reclaim benötigt dein Passwort, um das aktive Entwicklerverzeichnis zurückzusetzen.";

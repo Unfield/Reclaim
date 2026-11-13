@@ -4,6 +4,15 @@ All notable changes to Reclaim are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-13
+
+### Added
+- **Remove Xcode completely:** Xcode now appears in Applications and can be uninstalled together with its simulators, simulator runtimes, DerivedData, archives, device support files and settings (also `reclaim uninstall Xcode`). If Xcode was the active developer directory, Reclaim resets it so `git` and other command line tools keep working. Shared data stays while another copy of Xcode (e.g. a beta) is installed.
+
+### Fixed
+- Device-specific simulator runtimes (e.g. `iOS-27-2-iPhone19-4`) are shown as "iOS 27.2" instead of just the version.
+- The CLI builds again with the macOS 27 SDK (a type-check timeout in `reclaim clean`).
+
 ## [0.5.0] - 2026-11-07
 
 ### Added
